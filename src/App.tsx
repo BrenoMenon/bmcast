@@ -1,16 +1,11 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React, { useState, useEffect } from 'react';
 import { Dashboard } from './components/dashboard/Dashboard';
 import { TVPlayer } from './components/player/TVPlayer';
 import { LoginScreen } from './components/auth/LoginScreen';
-import { authService, AuthUser } from './services/supabaseClient';
+import { authService } from './services/authService';
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => authService.getCurrentUser());
+  const [currentUser, setCurrentUser] = useState(() => authService.getCurrentUser());
   const [currentRoute, setCurrentRoute] = useState<{
     view: 'dashboard' | 'player';
     slug?: string;
@@ -79,19 +74,21 @@ export default function App() {
   };
 
   const handleSignOut = () => {
+    authService.signOut();
     setCurrentUser(null);
   };
 
-  // If viewing TV player directly, render TV player
+  // 1. If viewing TV player directly, render TV player (allows Smart TVs to open via link without login)
   if (currentRoute.view === 'player' && currentRoute.slug) {
     return <TVPlayer slug={currentRoute.slug} onExit={handleExitPlayer} />;
   }
 
-  // Direct authentication check on initial landing
+  // 2. If not logged in, show Login & Register Screen with custom recovery question & answer
   if (!currentUser) {
     return <LoginScreen onSuccess={(user) => setCurrentUser(user)} />;
   }
 
+  // 3. If logged in, show Dashboard
   return (
     <Dashboard
       onOpenPlayer={handleOpenPlayer}

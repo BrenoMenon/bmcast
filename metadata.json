@@ -1,6 +1,6 @@
 {
-  "name": "BM Cast - Digital Signage & TV Menu",
-  "description": "Sistema profissional de sinalização digital e transmissão em Smart TVs por Breno Menon | BM Digital.",
+  "name": "BM Cast Pro - Sinalização Digital & Mídia Indoor",
+  "description": "Sistema inovador de TV corporativa, menus digitais e mídia indoor com personalização por slide, previsão do tempo ao vivo via API e QR Code dinâmico.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
