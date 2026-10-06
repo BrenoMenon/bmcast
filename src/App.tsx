@@ -6,14 +6,26 @@
 import React, { useState, useEffect } from 'react';
 import { Dashboard } from './components/dashboard/Dashboard';
 import { TVPlayer } from './components/player/TVPlayer';
+import { LoginScreen } from './components/auth/LoginScreen';
+import { authService, AuthUser } from './services/supabaseClient';
 
 export default function App() {
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => authService.getCurrentUser());
   const [currentRoute, setCurrentRoute] = useState<{
     view: 'dashboard' | 'player';
     slug?: string;
   }>({
     view: 'dashboard',
   });
+
+  // Track auth changes
+  useEffect(() => {
+    const handleAuthChange = () => {
+      setCurrentUser(authService.getCurrentUser());
+    };
+    window.addEventListener('bmcast_auth_changed', handleAuthChange);
+    return () => window.removeEventListener('bmcast_auth_changed', handleAuthChange);
+  }, []);
 
   // Parse current URL path and query parameters
   useEffect(() => {
@@ -66,9 +78,24 @@ export default function App() {
     window.history.pushState({ view: 'dashboard' }, '', cleanUrl);
   };
 
+  const handleSignOut = () => {
+    setCurrentUser(null);
+  };
+
+  // If viewing TV player directly, render TV player
   if (currentRoute.view === 'player' && currentRoute.slug) {
     return <TVPlayer slug={currentRoute.slug} onExit={handleExitPlayer} />;
   }
 
-  return <Dashboard onOpenPlayer={handleOpenPlayer} />;
+  // Direct authentication check on initial landing
+  if (!currentUser) {
+    return <LoginScreen onSuccess={(user) => setCurrentUser(user)} />;
+  }
+
+  return (
+    <Dashboard
+      onOpenPlayer={handleOpenPlayer}
+      onSignOut={handleSignOut}
+    />
+  );
 }

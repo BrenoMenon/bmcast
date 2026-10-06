@@ -316,196 +316,225 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
 
       {/* Modal Cadastrar / Editar Tela */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bm-card w-full max-w-lg p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-[#1E2738]">
-              <h3 className="text-sm font-bold text-white">
-                {editingScreen ? 'Editar Informações & Layout da TV' : 'Cadastrar Nova Smart TV'}
-              </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-fade-in">
+          <div className="w-full max-w-xl rounded-2xl bg-[#090D18] border border-[#1E293B] shadow-2xl p-6 sm:p-7 space-y-5 max-h-[92vh] overflow-y-auto text-slate-100">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3.5 border-b border-[#1E293B]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-blue-600/15 border border-blue-500/30 text-blue-400 flex items-center justify-center shrink-0">
+                  <Tv className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white tracking-tight">
+                    {editingScreen ? 'Configurações da Smart TV' : 'Cadastrar Nova Smart TV'}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Defina o nome, localização e estilo visual desta tela.
+                  </p>
+                </div>
+              </div>
+
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-white text-sm"
+                className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-[#141B2B] transition cursor-pointer"
+                aria-label="Fechar"
               >
-                ✕
+                <span className="text-base leading-none">✕</span>
               </button>
             </div>
 
             <form onSubmit={handleSaveScreen} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Nome do Dispositivo *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Ex: TV Principal Salão, Menu Balcão"
-                  className="bm-input w-full px-3 py-2"
-                />
+              {/* Device Identification */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="bm-label">
+                    Nome da TV / Terminal *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Ex: TV Principal Salão, Menu Balcão"
+                    className="bm-input"
+                  />
+                </div>
+
+                <div>
+                  <label className="bm-label">
+                    Localização no Estabelecimento *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.location}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    placeholder="Ex: Salão de Clientes, Parede Superior"
+                    className="bm-input"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Localização *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  placeholder="Ex: Salão de Clientes, Parede Superior"
-                  className="bm-input w-full px-3 py-2"
-                />
-              </div>
-
-              {/* Layout Selector (User requirement) */}
-              <div className="p-3.5 rounded-xl bg-[#0A0E17] border border-[#1A2234] space-y-2">
-                <label className="block text-xs font-bold text-blue-400 flex items-center gap-1.5">
-                  <Layout className="w-3.5 h-3.5" />
-                  <span>Estilo de Layout da Exibição</span>
+              {/* Layout Mode Selection */}
+              <div className="p-4 rounded-xl bg-[#060810] border border-[#1E293B] space-y-2.5">
+                <label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                  <Layout className="w-3.5 h-3.5 text-blue-400" />
+                  <span>Modo de Exibição na Tela</span>
                 </label>
                 <p className="text-[11px] text-slate-400">
-                  Escolha como a imagem e a marca da sua empresa serão exibidas na TV:
+                  Escolha como as mídias e a marca serão apresentadas nesta Smart TV:
                 </p>
 
-                <div className="grid grid-cols-2 gap-2 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, layoutMode: 'clean_media' })}
-                    className={`p-2.5 rounded-lg border text-left text-xs transition ${
+                    className={`p-3 rounded-xl border text-left text-xs transition flex flex-col justify-between gap-1 cursor-pointer ${
                       formData.layoutMode === 'clean_media'
-                        ? 'bg-blue-600/20 border-blue-500 text-white font-semibold'
-                        : 'bg-[#111726] border-[#1E293B] text-slate-400 hover:text-slate-200'
+                        ? 'bg-blue-600/15 border-blue-500 text-white font-semibold ring-1 ring-blue-500/40'
+                        : 'bg-[#0B0F1C] border-[#1E293B] text-slate-400 hover:text-slate-200 hover:border-slate-700'
                     }`}
                   >
-                    <span className="block font-bold">1. Apenas Imagens</span>
-                    <span className="text-[10px] text-slate-400 block mt-0.5">100% tela cheia limpa, só a foto/vídeo da empresa</span>
+                    <span className="font-bold text-white flex items-center justify-between">
+                      <span>1. Imagens Limpas (100%)</span>
+                      {formData.layoutMode === 'clean_media' && <Check className="w-3.5 h-3.5 text-blue-400" />}
+                    </span>
+                    <span className="text-[10px] text-slate-400">Tela cheia limpa, fotos/vídeos sem bordas</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, layoutMode: 'menu_brand' })}
-                    className={`p-2.5 rounded-lg border text-left text-xs transition ${
+                    className={`p-3 rounded-xl border text-left text-xs transition flex flex-col justify-between gap-1 cursor-pointer ${
                       formData.layoutMode === 'menu_brand'
-                        ? 'bg-blue-600/20 border-blue-500 text-white font-semibold'
-                        : 'bg-[#111726] border-[#1E293B] text-slate-400 hover:text-slate-200'
+                        ? 'bg-blue-600/15 border-blue-500 text-white font-semibold ring-1 ring-blue-500/40'
+                        : 'bg-[#0B0F1C] border-[#1E293B] text-slate-400 hover:text-slate-200 hover:border-slate-700'
                     }`}
                   >
-                    <span className="block font-bold">2. Cardápio com Marca</span>
-                    <span className="text-[10px] text-slate-400 block mt-0.5">Cabeçalho com a sua logo/nome + imagens</span>
+                    <span className="font-bold text-white flex items-center justify-between">
+                      <span>2. Cardápio com Marca</span>
+                      {formData.layoutMode === 'menu_brand' && <Check className="w-3.5 h-3.5 text-blue-400" />}
+                    </span>
+                    <span className="text-[10px] text-slate-400">Barra superior com logo/nome da loja + mídias</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, layoutMode: 'corporate_split' })}
-                    className={`p-2.5 rounded-lg border text-left text-xs transition ${
+                    className={`p-3 rounded-xl border text-left text-xs transition flex flex-col justify-between gap-1 cursor-pointer ${
                       formData.layoutMode === 'corporate_split'
-                        ? 'bg-blue-600/20 border-blue-500 text-white font-semibold'
-                        : 'bg-[#111726] border-[#1E293B] text-slate-400 hover:text-slate-200'
+                        ? 'bg-blue-600/15 border-blue-500 text-white font-semibold ring-1 ring-blue-500/40'
+                        : 'bg-[#0B0F1C] border-[#1E293B] text-slate-400 hover:text-slate-200 hover:border-slate-700'
                     }`}
                   >
-                    <span className="block font-bold">3. Corporativo (75/25)</span>
-                    <span className="text-[10px] text-slate-400 block mt-0.5">Slide principal + relógio, clima e letreiro rodapé</span>
+                    <span className="font-bold text-white flex items-center justify-between">
+                      <span>3. Dividido (75% / 25%)</span>
+                      {formData.layoutMode === 'corporate_split' && <Check className="w-3.5 h-3.5 text-blue-400" />}
+                    </span>
+                    <span className="text-[10px] text-slate-400">Slide principal + relógio, clima e próxima mídia</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, layoutMode: 'promo_qr' })}
-                    className={`p-2.5 rounded-lg border text-left text-xs transition ${
+                    className={`p-3 rounded-xl border text-left text-xs transition flex flex-col justify-between gap-1 cursor-pointer ${
                       formData.layoutMode === 'promo_qr'
-                        ? 'bg-blue-600/20 border-blue-500 text-white font-semibold'
-                        : 'bg-[#111726] border-[#1E293B] text-slate-400 hover:text-slate-200'
+                        ? 'bg-blue-600/15 border-blue-500 text-white font-semibold ring-1 ring-blue-500/40'
+                        : 'bg-[#0B0F1C] border-[#1E293B] text-slate-400 hover:text-slate-200 hover:border-slate-700'
                     }`}
                   >
-                    <span className="block font-bold">4. Promo com QR Code</span>
-                    <span className="text-[10px] text-slate-400 block mt-0.5">Destaque de produto + QR code para WhatsApp/Wi-Fi</span>
+                    <span className="font-bold text-white flex items-center justify-between">
+                      <span>4. Promo com QR Code</span>
+                      {formData.layoutMode === 'promo_qr' && <Check className="w-3.5 h-3.5 text-blue-400" />}
+                    </span>
+                    <span className="text-[10px] text-slate-400">Oferta + QR Code para pedidos ou Wi-Fi</span>
                   </button>
                 </div>
               </div>
 
-              {/* Brand Personalization */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Brand Customization */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="bm-label">
                     Nome da Empresa / Loja
                   </label>
                   <input
                     type="text"
                     value={formData.brandName}
                     onChange={(e) => setFormData({ ...formData, brandName: e.target.value })}
-                    placeholder="Ex: Burger Prime, Padaria Central"
-                    className="bm-input w-full px-3 py-2"
+                    placeholder="Ex: Burger Prime, Padaria Silva"
+                    className="bm-input"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="bm-label">
                     Slogan / Subtítulo da Marca
                   </label>
                   <input
                     type="text"
                     value={formData.brandSlogan}
                     onChange={(e) => setFormData({ ...formData, brandSlogan: e.target.value })}
-                    placeholder="Ex: Os melhores cortes artesanais"
-                    className="bm-input w-full px-3 py-2"
+                    placeholder="Ex: O Melhor Hambúrguer Artesanal"
+                    className="bm-input"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              {/* URL, Orientation, Resolution & Playlist */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="bm-label">
                     Identificador de URL (Slug)
                   </label>
                   <input
                     type="text"
                     value={formData.slug}
                     onChange={(e) => setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') })}
-                    placeholder="tv-salao"
-                    className="bm-input w-full px-3 py-2 text-xs"
+                    placeholder="ex: tv-salao-principal"
+                    className="bm-input font-mono text-xs"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Orientação
+                  <label className="bm-label">
+                    Orientação da TV
                   </label>
                   <select
                     value={formData.orientation}
                     onChange={(e) => setFormData({ ...formData, orientation: e.target.value as ScreenOrientation })}
-                    className="bm-input w-full px-3 py-2"
+                    className="bm-input"
                   >
-                    <option value="landscape">Horizontal (16:9)</option>
+                    <option value="landscape">Horizontal (16:9 Padrão)</option>
                     <option value="portrait">Vertical / Totem (9:16)</option>
                   </select>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Resolução
+                  <label className="bm-label">
+                    Resolução de Transmissão
                   </label>
                   <select
                     value={formData.resolution}
                     onChange={(e) => setFormData({ ...formData, resolution: e.target.value as any })}
-                    className="bm-input w-full px-3 py-2"
+                    className="bm-input"
                   >
-                    <option value="1080p">Full HD (1080p)</option>
-                    <option value="4K">Ultra HD (4K)</option>
-                    <option value="720p">HD (720p)</option>
+                    <option value="1080p">Full HD (1920 × 1080)</option>
+                    <option value="4K">4K Ultra HD (3840 × 2160)</option>
+                    <option value="720p">HD (1280 × 720)</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Playlist Ativa
+                  <label className="bm-label">
+                    Playlist Ativa Vinculada
                   </label>
                   <select
                     value={formData.activePlaylistId}
                     onChange={(e) => setFormData({ ...formData, activePlaylistId: e.target.value })}
-                    className="bm-input w-full px-3 py-2"
+                    className="bm-input"
                   >
                     <option value="">Nenhuma playlist vinculada</option>
                     {playlists.map((p) => (
@@ -517,33 +546,32 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-3 border-t border-[#1E293B]">
+              {/* Action Buttons */}
+              <div className="flex items-center justify-between pt-4 border-t border-[#1E293B]">
                 {editingScreen ? (
                   <button
                     type="button"
-                    onClick={() => {
-                      setScreenToDelete(editingScreen);
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 text-xs font-semibold transition"
+                    onClick={() => setScreenToDelete(editingScreen)}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 text-xs font-semibold transition cursor-pointer"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                    <span>Excluir esta TV</span>
+                    <span>Excluir TV</span>
                   </button>
                 ) : <div />}
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2.5">
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="px-3.5 py-1.5 rounded-lg bg-[#141B2B] hover:bg-[#1B253B] text-slate-300 text-xs font-semibold"
+                    className="px-4 py-2 rounded-xl bg-[#141B2B] hover:bg-[#1B253B] text-slate-300 text-xs font-semibold transition cursor-pointer"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold"
+                    className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-lg shadow-blue-900/40 active:scale-95 cursor-pointer"
                   >
-                    {editingScreen ? 'Salvar Alterações' : 'Cadastrar TV'}
+                    {editingScreen ? 'Salvar Alterações' : 'Cadastrar Smart TV'}
                   </button>
                 </div>
               </div>

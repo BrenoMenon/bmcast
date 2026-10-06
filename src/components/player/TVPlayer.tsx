@@ -389,7 +389,9 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
                     loop
                     muted={isMuted}
                     playsInline
+                    preload="auto"
                     className="w-full h-full object-cover"
+                    style={{ imageRendering: 'crisp-edges' }}
                   />
                 ) : (
                   <img
@@ -397,6 +399,7 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
                     src={currentItem.media.url}
                     alt={currentItem.customTitle || currentItem.media.title}
                     className="w-full h-full object-cover"
+                    style={{ imageRendering: '-webkit-optimize-contrast' }}
                   />
                 )}
                 {/* Thin countdown progress bar at top */}
@@ -458,7 +461,7 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
                   <div className="space-y-5">
                     <div className="pb-3 border-b border-[#1E293B] flex items-center justify-between">
                       <h2 className="text-sm font-bold text-white uppercase">{brandTitle}</h2>
-                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                      <span className="w-2 h-2 rounded-full bg-blue-500" />
                     </div>
 
                     {/* Clock */}

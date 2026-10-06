@@ -55,6 +55,29 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({ media, onRefresh }) 
       reader.onload = async (e) => {
         const base64Url = e.target?.result as string;
         const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
+        let resolutionTag = isVideo ? 'Vídeo HD Máxima Resolução' : 'Imagem Alta Resolução';
+
+        if (isImage) {
+          try {
+            const img = new Image();
+            img.src = base64Url;
+            await new Promise((resolve) => {
+              img.onload = resolve;
+              img.onerror = resolve;
+            });
+            if (img.naturalWidth >= 3840 || img.naturalHeight >= 2160) {
+              resolutionTag = `4K UHD (${img.naturalWidth}×${img.naturalHeight})`;
+            } else if (img.naturalWidth >= 1920 || img.naturalHeight >= 1080) {
+              resolutionTag = `Full HD 1080p (${img.naturalWidth}×${img.naturalHeight})`;
+            } else if (img.naturalWidth > 0) {
+              resolutionTag = `${img.naturalWidth}×${img.naturalHeight} (Original)`;
+            }
+          } catch {
+            // fallback
+          }
+        } else if (isVideo) {
+          resolutionTag = 'Vídeo Full HD 60fps (Qualidade Máxima)';
+        }
 
         await storageService.addMedia({
           title: file.name.replace(/\.[^/.]+$/, ''),
@@ -63,7 +86,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({ media, onRefresh }) 
           thumbnail: isImage ? base64Url : undefined,
           durationDefault: isVideo ? 15 : 10,
           category: 'promo',
-          dimensions: isVideo ? 'Vídeo HD' : 'Imagem HD',
+          dimensions: resolutionTag,
           fileSize: fileSizeMB,
         });
 
@@ -476,23 +499,35 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({ media, onRefresh }) 
 
       {/* URL Import Modal */}
       {isUrlModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-          <div className="bm-card w-full max-w-md p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-[#1E293B]">
-              <h3 className="text-sm font-bold text-white">
-                Adicionar Mídia por URL
-              </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-fade-in">
+          <div className="w-full max-w-md rounded-2xl bg-[#090D18] border border-[#1E293B] shadow-2xl p-6 sm:p-7 space-y-5 text-slate-100">
+            <div className="flex items-center justify-between pb-3.5 border-b border-[#1E293B]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-blue-600/15 border border-blue-500/30 text-blue-400 flex items-center justify-center shrink-0">
+                  <LinkIcon className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white tracking-tight">
+                    Adicionar Mídia por URL
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Insira o link direto de uma foto ou vídeo na nuvem.
+                  </p>
+                </div>
+              </div>
+
               <button
                 onClick={() => setIsUrlModalOpen(false)}
-                className="text-slate-400 hover:text-white text-sm"
+                className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-[#141B2B] transition cursor-pointer"
+                aria-label="Fechar"
               >
-                ✕
+                <span className="text-base leading-none">✕</span>
               </button>
             </div>
 
             <form onSubmit={handleSaveUrlMedia} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                <label className="bm-label">
                   Título Identificador *
                 </label>
                 <input
@@ -501,12 +536,12 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({ media, onRefresh }) 
                   value={urlForm.title}
                   onChange={(e) => setUrlForm({ ...urlForm, title: e.target.value })}
                   placeholder="Ex: Foto Prato Especial, Promoção"
-                  className="bm-input w-full px-3 py-2 text-xs"
+                  className="bm-input"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                <label className="bm-label">
                   URL Direta da Imagem ou Vídeo (HTTPS) *
                 </label>
                 <input
@@ -515,19 +550,19 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({ media, onRefresh }) 
                   value={urlForm.url}
                   onChange={(e) => setUrlForm({ ...urlForm, url: e.target.value })}
                   placeholder="https://exemplo.com/foto.jpg"
-                  className="bm-input w-full px-3 py-2 text-xs"
+                  className="bm-input font-mono text-xs"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Tipo
+                  <label className="bm-label">
+                    Tipo de Mídia
                   </label>
                   <select
                     value={urlForm.type}
                     onChange={(e) => setUrlForm({ ...urlForm, type: e.target.value as MediaType })}
-                    className="bm-input w-full px-3 py-2 text-xs"
+                    className="bm-input"
                   >
                     <option value="image">Imagem Estática</option>
                     <option value="video">Vídeo (MP4)</option>
@@ -535,7 +570,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({ media, onRefresh }) 
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="bm-label">
                     Duração Padrão (segundos)
                   </label>
                   <input
@@ -544,22 +579,22 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({ media, onRefresh }) 
                     max="180"
                     value={urlForm.durationDefault}
                     onChange={(e) => setUrlForm({ ...urlForm, durationDefault: Number(e.target.value) })}
-                    className="bm-input w-full px-3 py-2 text-xs"
+                    className="bm-input"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#1E293B]">
+              <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-[#1E293B]">
                 <button
                   type="button"
                   onClick={() => setIsUrlModalOpen(false)}
-                  className="px-3.5 py-1.5 rounded-lg bg-[#141B2B] hover:bg-[#1B253B] text-slate-300 text-xs font-semibold"
+                  className="px-4 py-2 rounded-xl bg-[#141B2B] hover:bg-[#1B253B] text-slate-300 text-xs font-semibold transition cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold"
+                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-lg shadow-blue-900/40 active:scale-95 cursor-pointer"
                 >
                   Salvar Mídia
                 </button>

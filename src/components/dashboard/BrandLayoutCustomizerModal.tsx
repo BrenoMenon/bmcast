@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  Sparkles, Check, X, Download, Layout, 
-  Store, Palette, DollarSign, Image as ImageIcon, QrCode
+  Sparkles, Plus, Trash2, X, Layout, 
+  Store, Palette, Utensils, 
+  Flame, Scissors, Megaphone, Check, Eye, Image as ImageIcon
 } from 'lucide-react';
 import { storageService } from '../../services/storageService';
 
@@ -9,6 +10,7 @@ export interface LayoutTemplate {
   id: string;
   name: string;
   category: string;
+  icon: 'utensils' | 'flame' | 'scissors' | 'megaphone' | 'image';
   description: string;
   placeholderBrand: string;
   placeholderSlogan: string;
@@ -16,34 +18,55 @@ export interface LayoutTemplate {
   defaultBadgeText: string;
 }
 
+export interface TopicItem {
+  id: string;
+  name: string;
+  price: string;
+  desc: string;
+}
+
 export const PRESET_TEMPLATES: LayoutTemplate[] = [
+  {
+    id: 'mural-slides',
+    name: 'Mural de Imagens & Slides',
+    category: 'Mural de Fotos & Produtos',
+    icon: 'image',
+    description: 'Mural com fotos de produtos, campanhas, ofertas e galeria de imagens.',
+    placeholderBrand: 'Galeria Visual & Mural da Loja',
+    placeholderSlogan: 'Novidades, Lançamentos e Produtos em Destaque',
+    defaultAccent: '#0284C7',
+    defaultBadgeText: 'MURAL DE FOTOS',
+  },
   {
     id: 'menu-gourmet',
     name: 'Cardápio & Menu Comercial',
     category: 'Alimentação & Bebidas',
-    description: 'Ideal para lanchonetes, restaurantes, cafeterias e hamburguerias. Exibe pratos com preços e avisos de pedidos.',
-    placeholderBrand: 'Nome do seu Restaurante ou Lanchonete',
-    placeholderSlogan: 'Slogan ou especialidade da casa',
+    icon: 'utensils',
+    description: 'Pratos, lanches, porções, combos e bebidas com preços bem destacados.',
+    placeholderBrand: 'Nome do Restaurante / Lanchonete',
+    placeholderSlogan: 'O Melhor Sabor da Região • Atendimento de Qualidade',
     defaultAccent: '#2563EB',
     defaultBadgeText: 'CARDÁPIO',
   },
   {
     id: 'promo-dia',
-    name: 'Promoção em Destaque',
+    name: 'Super Promoção em Destaque',
     category: 'Varejo & Ofertas',
-    description: 'Destaque visual gigante para produtos com desconto imperdível, preço especial e chamada de balcão.',
-    placeholderBrand: 'Nome da sua Loja ou Comércio',
-    placeholderSlogan: 'Oferta especial válida hoje',
+    icon: 'flame',
+    description: 'Destaque visual gigante para produtos com desconto imperdível.',
+    placeholderBrand: 'Nome da Sua Loja / Comércio',
+    placeholderSlogan: 'Oferta Especial Válida Somente Hoje',
     defaultAccent: '#E11D48',
-    defaultBadgeText: 'PROMOÇÃO',
+    defaultBadgeText: 'SUPER PROMOÇÃO',
   },
   {
     id: 'tabela-servicos',
     name: 'Tabela de Serviços & Valores',
     category: 'Serviços & Estética',
-    description: 'Perfeito para barbearias, salões de beleza, clínicas, lava-rápidos, oficinas e estúdios.',
-    placeholderBrand: 'Nome do Estabelecimento / Barbearia',
-    placeholderSlogan: 'Atendimento com horário ou por ordem de chegada',
+    icon: 'scissors',
+    description: 'Barbearias, salões, clínicas, estúdios, oficinas e lava-rápidos.',
+    placeholderBrand: 'Nome da Barbearia / Salão / Estúdio',
+    placeholderSlogan: 'Atendimento por Ordem de Chegada ou Agendamento',
     defaultAccent: '#0D9488',
     defaultBadgeText: 'SERVIÇOS',
   },
@@ -51,12 +74,24 @@ export const PRESET_TEMPLATES: LayoutTemplate[] = [
     id: 'quadro-avisos',
     name: 'Quadro Informativo & Avisos',
     category: 'Institucional & Avisos',
-    description: 'Comunicados aos clientes, horários de atendimento, regras da loja, Wi-Fi e redes sociais.',
+    icon: 'megaphone',
+    description: 'Comunicados aos clientes, horários, regras, Wi-Fi e redes sociais.',
     placeholderBrand: 'Nome da Empresa / Recepção',
-    placeholderSlogan: 'Horários de Atendimento & Comunicados',
+    placeholderSlogan: 'Horários de Atendimento & Comunicados Oficiais',
     defaultAccent: '#7C3AED',
     defaultBadgeText: 'INFORMATIVO',
   },
+];
+
+const PRESET_COLORS = [
+  { name: 'Azul Real', hex: '#2563EB' },
+  { name: 'Esmeralda', hex: '#059669' },
+  { name: 'Vermelho Fogo', hex: '#E11D48' },
+  { name: 'Roxo Imperial', hex: '#7C3AED' },
+  { name: 'Âmbar Dourado', hex: '#D97706' },
+  { name: 'Ciano Elétrico', hex: '#0891B2' },
+  { name: 'Rosa Vibrante', hex: '#DB2777' },
+  { name: 'Titânio Dark', hex: '#475569' },
 ];
 
 interface BrandLayoutCustomizerModalProps {
@@ -74,20 +109,18 @@ export const BrandLayoutCustomizerModal: React.FC<BrandLayoutCustomizerModalProp
 }) => {
   const [selectedTemplate, setSelectedTemplate] = useState<LayoutTemplate>(initialTemplate);
   
-  // ALL INPUTS START COMPLETELY EMPTY PER USER REQUEST:
-  // "na marca da empresa ja tem varias coisas preenhcidas deixe tudo sem preecnher"
+  // Brand identity fields
   const [brandName, setBrandName] = useState('');
   const [brandSlogan, setBrandSlogan] = useState('');
   const [accentColor, setAccentColor] = useState(initialTemplate.defaultAccent || '#2563EB');
   const [footerMessage, setFooterMessage] = useState('');
-  const [badgeText, setBadgeText] = useState(initialTemplate.defaultBadgeText || 'DESTAQUE');
+  const [badgeText, setBadgeText] = useState(initialTemplate.defaultBadgeText || 'CARDÁPIO');
   
-  // 4 clean blank item rows with placeholders
-  const [items, setItems] = useState([
-    { name: '', price: '', desc: '' },
-    { name: '', price: '', desc: '' },
-    { name: '', price: '', desc: '' },
-    { name: '', price: '', desc: '' },
+  // Dynamic Topics List
+  const [topics, setTopics] = useState<TopicItem[]>([
+    { id: '1', name: '', price: '', desc: '' },
+    { id: '2', name: '', price: '', desc: '' },
+    { id: '3', name: '', price: '', desc: '' },
   ]);
 
   const [mobileTab, setMobileTab] = useState<'form' | 'preview'>('form');
@@ -107,10 +140,22 @@ export const BrandLayoutCustomizerModal: React.FC<BrandLayoutCustomizerModalProp
     setBadgeText(tpl.defaultBadgeText);
   };
 
-  const handleItemChange = (index: number, field: 'name' | 'price' | 'desc', val: string) => {
-    const updated = [...items];
-    updated[index] = { ...updated[index], [field]: val };
-    setItems(updated);
+  const handleTopicChange = (id: string, field: keyof TopicItem, val: string) => {
+    setTopics((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, [field]: val } : t))
+    );
+  };
+
+  const handleAddTopic = () => {
+    const newId = `topic-${Date.now()}`;
+    setTopics((prev) => [
+      ...prev,
+      { id: newId, name: '', price: '', desc: '' },
+    ]);
+  };
+
+  const handleDeleteTopic = (id: string) => {
+    setTopics((prev) => prev.filter((t) => t.id !== id));
   };
 
   // Draw high-resolution 1920x1080 canvas
@@ -121,204 +166,212 @@ export const BrandLayoutCustomizerModal: React.FC<BrandLayoutCustomizerModalProp
     const ctx = canvas.getContext('2d');
     if (!ctx) return '';
 
-    // Dark sleek background
+    // Dark sleek gradient background
     const bgGradient = ctx.createLinearGradient(0, 0, 1920, 1080);
     bgGradient.addColorStop(0, '#07090F');
-    bgGradient.addColorStop(0.5, '#0B0F19');
-    bgGradient.addColorStop(1, '#05070B');
+    bgGradient.addColorStop(0.5, '#0C101C');
+    bgGradient.addColorStop(1, '#05070D');
     ctx.fillStyle = bgGradient;
     ctx.fillRect(0, 0, 1920, 1080);
 
-    // Accent ambient glow in top-left
-    const glow1 = ctx.createRadialGradient(250, 150, 20, 250, 150, 600);
-    glow1.addColorStop(0, accentColor + '33');
-    glow1.addColorStop(1, 'transparent');
-    ctx.fillStyle = glow1;
-    ctx.fillRect(0, 0, 1920, 600);
+    // Accent ambient glow top-left and bottom-right
+    const radGlow1 = ctx.createRadialGradient(200, 150, 50, 200, 150, 500);
+    radGlow1.addColorStop(0, `${accentColor}33`);
+    radGlow1.addColorStop(1, 'transparent');
+    ctx.fillStyle = radGlow1;
+    ctx.fillRect(0, 0, 1920, 1080);
 
-    // Header container with border
-    ctx.fillStyle = '#0F1424E6';
-    ctx.fillRect(80, 60, 1760, 160);
+    const radGlow2 = ctx.createRadialGradient(1700, 900, 50, 1700, 900, 600);
+    radGlow2.addColorStop(0, `${accentColor}25`);
+    radGlow2.addColorStop(1, 'transparent');
+    ctx.fillStyle = radGlow2;
+    ctx.fillRect(0, 0, 1920, 1080);
+
+    // Top Header Banner Box
+    ctx.fillStyle = '#0B0F1C';
     ctx.strokeStyle = '#1E293B';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(80, 60, 1760, 160);
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.roundRect(80, 50, 1760, 180, 24);
+    ctx.fill();
+    ctx.stroke();
 
-    // Top Brand Badge
+    // Accent Stripe
     ctx.fillStyle = accentColor;
     ctx.beginPath();
-    ctx.roundRect(110, 85, 240, 32, 6);
+    ctx.roundRect(80, 50, 16, 180, [24, 0, 0, 24]);
+    ctx.fill();
+
+    // Category / Badge Pill
+    ctx.fillStyle = accentColor;
+    ctx.beginPath();
+    ctx.roundRect(130, 80, 220, 40, 10);
     ctx.fill();
 
     ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 16px "Plus Jakarta Sans", sans-serif';
-    ctx.fillText((badgeText || 'DESTAQUE').toUpperCase(), 130, 107);
+    ctx.font = 'bold 22px system-ui, sans-serif';
+    ctx.textBaseline = 'middle';
+    ctx.fillText((badgeText || selectedTemplate.category).toUpperCase(), 145, 100);
 
     // Brand Name
     const displayBrand = brandName.trim() || selectedTemplate.placeholderBrand;
     ctx.fillStyle = '#FFFFFF';
-    ctx.font = '800 48px "Plus Jakarta Sans", sans-serif';
-    ctx.fillText(displayBrand.toUpperCase(), 110, 175);
+    ctx.font = '900 52px system-ui, sans-serif';
+    ctx.textBaseline = 'top';
+    ctx.fillText(displayBrand.toUpperCase(), 130, 130);
 
-    // Slogan / Subtitle
+    // Brand Slogan
     const displaySlogan = brandSlogan.trim() || selectedTemplate.placeholderSlogan;
     ctx.fillStyle = '#94A3B8';
-    ctx.font = '600 22px "Plus Jakarta Sans", sans-serif';
-    ctx.fillText(displaySlogan, 110, 205);
+    ctx.font = '500 24px system-ui, sans-serif';
+    ctx.fillText(displaySlogan, 130, 190);
 
-    // Right side live badge
-    ctx.fillStyle = accentColor + '20';
-    ctx.beginPath();
-    ctx.roundRect(1560, 95, 240, 90, 12);
-    ctx.fill();
-    ctx.strokeStyle = accentColor + '60';
-    ctx.strokeRect(1560, 95, 240, 90);
+    // Live Clock indicator in Header
+    ctx.fillStyle = '#F8FAFC';
+    ctx.font = 'bold 44px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), 1800, 90);
 
-    ctx.fillStyle = '#60A5FA';
-    ctx.font = 'bold 15px "Plus Jakarta Sans", sans-serif';
-    ctx.fillText('BM CAST DIGITAL', 1600, 130);
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = '800 24px "Plus Jakarta Sans", sans-serif';
-    ctx.fillText('TRANSMISSÃO', 1600, 162);
+    ctx.fillStyle = '#10B981';
+    ctx.font = 'bold 20px system-ui, sans-serif';
+    ctx.fillText('● TRANSMISSÃO AO VIVO', 1800, 150);
+    ctx.textAlign = 'left';
 
-    // Items Section
-    const startY = 260;
-    const availableHeight = 680;
-    const activeItems = items.filter((it) => it.name.trim() || it.price.trim());
-    const renderItems = activeItems.length > 0 ? activeItems : [
-      { name: 'Item / Produto 1', price: 'R$ 0,00', desc: 'Descrição dos ingredientes ou detalhes do serviço' },
-      { name: 'Item / Produto 2', price: 'R$ 0,00', desc: 'Descrição dos ingredientes ou detalhes do serviço' },
-      { name: 'Item / Produto 3', price: 'R$ 0,00', desc: 'Descrição dos ingredientes ou detalhes do serviço' },
+    // Content Body Area
+    const activeTopics = topics.filter((t) => t.name.trim() !== '');
+    const displayTopics = activeTopics.length > 0 ? activeTopics : [
+      { id: 'p1', name: 'Item Especial em Destaque 1', price: 'R$ 29,90', desc: 'Ingredientes nobres e preparo artesanal' },
+      { id: 'p2', name: 'Item Especial em Destaque 2', price: 'R$ 39,90', desc: 'Acompanha porção e molho da casa' },
+      { id: 'p3', name: 'Item Especial em Destaque 3', price: 'R$ 19,90', desc: 'Opção leve e saborosa para o seu dia' },
     ];
 
     if (selectedTemplate.id === 'promo-dia') {
-      // Big promotional single item layout
-      const promoItem = renderItems[0];
-      ctx.fillStyle = '#10172AE6';
-      ctx.fillRect(80, startY, 1760, 670);
+      // Big Hero Promo Center Box
+      const promoItem = displayTopics[0] || { name: 'PRODUTO EM OFERTA', price: 'R$ 49,90', desc: 'Desconto incrível exclusivo para hoje' };
+      
+      ctx.fillStyle = '#0D1322';
       ctx.strokeStyle = accentColor;
       ctx.lineWidth = 4;
-      ctx.strokeRect(80, startY, 1760, 670);
+      ctx.beginPath();
+      ctx.roundRect(140, 270, 1640, 640, 32);
+      ctx.fill();
+      ctx.stroke();
 
       ctx.fillStyle = accentColor;
-      ctx.font = '900 64px "Plus Jakarta Sans", sans-serif';
-      ctx.fillText(promoItem?.name || 'PROMOÇÃO DO DIA', 140, 390);
-
-      ctx.fillStyle = '#CBD5E1';
-      ctx.font = '500 32px "Plus Jakarta Sans", sans-serif';
-      ctx.fillText(promoItem?.desc || 'Condição especial por tempo limitado no estabelecimento', 140, 470);
-
-      // Price Tag Box
-      ctx.fillStyle = '#0F172A';
-      ctx.beginPath();
-      ctx.roundRect(140, 550, 750, 220, 24);
-      ctx.fill();
-      ctx.strokeStyle = '#22C55E';
-      ctx.lineWidth = 4;
-      ctx.strokeRect(140, 550, 750, 220);
-
-      ctx.fillStyle = '#22C55E';
-      ctx.font = '900 110px "Plus Jakarta Sans", sans-serif';
-      ctx.fillText(promoItem?.price || 'R$ 0,00', 180, 700);
-
-      // Call to action button box
-      ctx.fillStyle = accentColor;
-      ctx.beginPath();
-      ctx.roundRect(960, 600, 800, 130, 20);
-      ctx.fill();
+      ctx.font = 'bold 36px system-ui, sans-serif';
+      ctx.fillText('★ SUPER OFERTA DO DIA ★', 200, 340);
 
       ctx.fillStyle = '#FFFFFF';
-      ctx.font = '800 38px "Plus Jakarta Sans", sans-serif';
-      ctx.fillText('PEÇA DIRETO NO BALCÃO', 1080, 680);
+      ctx.font = '900 84px system-ui, sans-serif';
+      ctx.fillText(promoItem.name.toUpperCase(), 200, 420);
+
+      if (promoItem.desc) {
+        ctx.fillStyle = '#CBD5E1';
+        ctx.font = '500 36px system-ui, sans-serif';
+        ctx.fillText(promoItem.desc, 200, 530);
+      }
+
+      // Price Tag
+      ctx.fillStyle = '#10B981';
+      ctx.font = '900 130px system-ui, sans-serif';
+      ctx.fillText(promoItem.price || 'R$ 0,00', 200, 680);
+
+      ctx.fillStyle = '#94A3B8';
+      ctx.font = 'bold 28px system-ui, sans-serif';
+      ctx.fillText('Preço promocional válido enquanto durarem os estoques', 200, 830);
+
     } else {
-      // Multi-item grid layout
-      const count = renderItems.length;
-      const itemH = Math.min(150, Math.floor(availableHeight / count) - 15);
+      // 2-Column Responsive Items Grid
+      const startY = 270;
+      const cardHeight = 150;
+      const gapY = 24;
+      const colWidth = 860;
+      const gapX = 40;
 
-      renderItems.forEach((item, idx) => {
-        const y = startY + idx * (itemH + 18);
+      displayTopics.slice(0, 6).forEach((item, index) => {
+        const col = index % 2;
+        const row = Math.floor(index / 2);
+        const x = 80 + col * (colWidth + gapX);
+        const y = startY + row * (cardHeight + gapY);
 
-        ctx.fillStyle = '#0F1526CC';
-        ctx.beginPath();
-        ctx.roundRect(80, y, 1760, itemH, 12);
-        ctx.fill();
+        ctx.fillStyle = '#0C1120';
         ctx.strokeStyle = '#1E293B';
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(80, y, 1760, itemH);
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(x, y, colWidth, cardHeight, 18);
+        ctx.fill();
+        ctx.stroke();
 
-        // Indicator bar on left
         ctx.fillStyle = accentColor;
         ctx.beginPath();
-        ctx.roundRect(80, y, 8, itemH, 4);
+        ctx.roundRect(x, y, 8, cardHeight, [18, 0, 0, 18]);
         ctx.fill();
 
-        // Item Name
         ctx.fillStyle = '#FFFFFF';
-        ctx.font = '700 28px "Plus Jakarta Sans", sans-serif';
-        ctx.fillText(item.name || `Item ${idx + 1}`, 120, y + 48);
+        ctx.font = 'bold 36px system-ui, sans-serif';
+        ctx.textBaseline = 'top';
+        const truncatedName = item.name.length > 32 ? item.name.substring(0, 32) + '...' : item.name;
+        ctx.fillText(truncatedName, x + 35, y + 30);
 
-        // Item Description
         if (item.desc) {
           ctx.fillStyle = '#94A3B8';
-          ctx.font = '400 20px "Plus Jakarta Sans", sans-serif';
-          ctx.fillText(item.desc, 120, y + 88);
+          ctx.font = '500 22px system-ui, sans-serif';
+          const truncatedDesc = item.desc.length > 50 ? item.desc.substring(0, 50) + '...' : item.desc;
+          ctx.fillText(truncatedDesc, x + 35, y + 85);
         }
 
-        // Price badge pill
-        ctx.fillStyle = accentColor + '25';
-        ctx.beginPath();
-        ctx.roundRect(1480, y + 25, 320, itemH - 50, 12);
-        ctx.fill();
-        ctx.strokeStyle = accentColor;
-        ctx.lineWidth = 2;
-        ctx.strokeRect(1480, y + 25, 320, itemH - 50);
-
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = '800 36px "Plus Jakarta Sans", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(item.price || 'R$ 0,00', 1480 + 160, y + itemH / 2 + 12);
-        ctx.textAlign = 'left';
+        if (item.price) {
+          ctx.fillStyle = '#10B981';
+          ctx.font = '900 42px system-ui, sans-serif';
+          ctx.textAlign = 'right';
+          ctx.fillText(item.price, x + colWidth - 35, y + 45);
+          ctx.textAlign = 'left';
+        }
       });
     }
 
-    // Bottom Footer Ticker Bar
-    const displayFooter = footerMessage.trim() || 'Avisos aos clientes • Peça no balcão ou consulte nosso atendimento';
-    ctx.fillStyle = '#090D18';
-    ctx.fillRect(0, 990, 1920, 90);
+    // Bottom Ticker / Footer Box
+    ctx.fillStyle = '#080C16';
     ctx.strokeStyle = '#1E293B';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(0, 990);
-    ctx.lineTo(1920, 990);
+    ctx.roundRect(80, 950, 1760, 80, 20);
+    ctx.fill();
     ctx.stroke();
 
+    const displayFooter = footerMessage.trim() || '📢 Atendimento no Balcão • Conecte-se ao Wi-Fi • Siga nossas Redes';
     ctx.fillStyle = '#F8FAFC';
-    ctx.font = '600 22px "Plus Jakarta Sans", sans-serif';
-    ctx.fillText('📢 ' + displayFooter, 80, 1045);
+    ctx.font = '600 24px system-ui, sans-serif';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(displayFooter, 120, 990);
 
-    return canvas.toDataURL('image/png');
+    ctx.fillStyle = '#38BDF8';
+    ctx.font = 'bold 22px system-ui, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('BM Cast Digital Signage', 1800, 990);
+    ctx.textAlign = 'left';
+
+    return canvas.toDataURL('image/png', 1.0);
   };
 
   const handleSaveToMediaLibrary = async () => {
     setIsRendering(true);
     try {
       const dataUrl = renderCanvasToDataUrl();
-      const titleName = brandName.trim() || 'Layout Personalizado';
+      if (!dataUrl) return;
 
+      const title = `${brandName.trim() || selectedTemplate.name} (${selectedTemplate.category})`;
       await storageService.addMedia({
-        title: `${titleName} - ${selectedTemplate.name}`,
-        type: 'image',
+        title,
         url: dataUrl,
-        thumbnail: dataUrl,
+        type: 'image',
         durationDefault: 12,
-        category: 'cardapio',
         dimensions: '1920x1080 (Full HD)',
-        fileSize: 'Layout Renderizado',
+        fileSize: 'Alta Definição (1080p)',
       });
 
       onSuccess();
       onClose();
-    } catch (e) {
-      console.error('Erro ao renderizar layout:', e);
     } finally {
       setIsRendering(false);
     }
@@ -327,267 +380,385 @@ export const BrandLayoutCustomizerModal: React.FC<BrandLayoutCustomizerModalProp
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-fade-in">
-      <div className="bm-card w-full max-w-5xl p-5 sm:p-7 space-y-5 max-h-[95vh] flex flex-col shadow-2xl overflow-hidden border-[#232F46]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md animate-fade-in">
+      <div className="w-full max-w-6xl rounded-2xl bg-[#090D18] border border-[#1E293B] shadow-2xl flex flex-col max-h-[94vh] overflow-hidden">
+        
         {/* Top Header */}
-        <div className="flex items-center justify-between pb-3.5 border-b border-[#1E293B]">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-blue-600/10 border border-blue-500/30 text-blue-400">
-              <Sparkles className="w-5 h-5" />
+        <div className="px-5 py-4 border-b border-[#1E293B] flex items-center justify-between shrink-0 bg-[#0B0F1C]">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-600/15 border border-blue-500/30 text-blue-400 flex items-center justify-center shrink-0">
+              <Store className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">
-                Personalizador de Layout com a Marca da Empresa
+              <h3 className="text-base sm:text-lg font-black text-white tracking-tight">
+                Personalizador de Telas & Cardápios
               </h3>
               <p className="text-xs text-slate-400">
-                Preencha o nome do seu negócio, pratos e preços nos campos em branco abaixo e gere a arte para a TV.
+                Selecione o tipo de layout, personalize as cores e configure seus tópicos com preços.
               </p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-1 rounded-lg transition"
+            className="text-slate-400 hover:text-white p-2 rounded-xl bg-[#111728] hover:bg-[#1A233A] border border-[#1E293B] transition shrink-0 cursor-pointer"
+            aria-label="Fechar"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Templates Picker Row */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-          {PRESET_TEMPLATES.map((tpl) => (
+        {/* Mobile View Toggle Switcher */}
+        <div className="lg:hidden p-3 bg-[#0B0F1C] border-b border-[#1E293B] shrink-0">
+          <div className="flex rounded-xl bg-[#07090E] p-1 border border-[#1E293B]">
             <button
-              key={tpl.id}
-              onClick={() => handleSelectTemplate(tpl)}
-              className={`shrink-0 px-3 py-2 rounded-lg text-xs font-semibold border transition flex items-center gap-1.5 ${
-                selectedTemplate.id === tpl.id
-                  ? 'bg-blue-600 text-white border-blue-500 shadow-sm'
-                  : 'bg-[#0E131F] text-slate-300 border-[#1E293B] hover:border-slate-700'
+              type="button"
+              onClick={() => setMobileTab('form')}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                mobileTab === 'form' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400'
               }`}
             >
               <Layout className="w-3.5 h-3.5" />
-              <span>{tpl.name}</span>
+              <span>1. Configurar Dados & Tópicos</span>
             </button>
-          ))}
+            <button
+              type="button"
+              onClick={() => setMobileTab('preview')}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                mobileTab === 'preview' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400'
+              }`}
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span>2. Ver Prévia na TV</span>
+            </button>
+          </div>
         </div>
 
-        {/* Mobile View Toggle between Form and TV Preview */}
-        <div className="lg:hidden flex items-center bg-[#0C101C] p-1 rounded-xl border border-[#1E293B]">
-          <button
-            type="button"
-            onClick={() => setMobileTab('form')}
-            className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition ${
-              mobileTab === 'form' ? 'bg-blue-600 text-white' : 'text-slate-400'
-            }`}
-          >
-            Editar Dados da Marca
-          </button>
-          <button
-            type="button"
-            onClick={() => setMobileTab('preview')}
-            className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition ${
-              mobileTab === 'preview' ? 'bg-blue-600 text-white' : 'text-slate-400'
-            }`}
-          >
-            Ver Prévia na TV (16:9)
-          </button>
-        </div>
-
-        {/* Main Body: 2 Columns (Editor vs Live Preview) */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 overflow-y-auto pr-1">
-          {/* Left Column: Clean Form Customization (5 cols) */}
-          <div className={`lg:col-span-5 space-y-4 ${mobileTab === 'form' ? 'block' : 'hidden lg:block'}`}>
-            <div className="p-4 rounded-xl bg-[#0A0D15] border border-[#1E293B] space-y-3.5">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-                <Store className="w-3.5 h-3.5 text-blue-400" />
-                <span>Identidade da Sua Marca</span>
-              </h4>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Nome da Empresa / Estabelecimento *
-                </label>
-                <input
-                  type="text"
-                  value={brandName}
-                  onChange={(e) => setBrandName(e.target.value)}
-                  placeholder="Ex: Hamburgueria Silva, Salão Prime, Bar do Pedro"
-                  className="bm-input w-full px-3 py-2 text-xs font-semibold"
-                />
+        {/* Main Content Area: 2 Columns */}
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
+          
+          {/* LEFT COLUMN: Scrollable Form Settings (7 cols) */}
+          <div className={`lg:col-span-7 h-full overflow-y-auto p-4 sm:p-6 space-y-6 ${mobileTab === 'form' ? 'block' : 'hidden lg:block'}`}>
+            
+            {/* STEP 1: CATEGORY SELECTION CARDS */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-black flex items-center justify-center">1</span>
+                  <span>Finalidade do Layout</span>
+                </span>
+                <span className="text-[11px] text-blue-400 font-semibold">
+                  {selectedTemplate.category}
+                </span>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Slogan ou Subtítulo
-                </label>
-                <input
-                  type="text"
-                  value={brandSlogan}
-                  onChange={(e) => setBrandSlogan(e.target.value)}
-                  placeholder="Ex: O Melhor Hambúrguer da Cidade • Desde 2021"
-                  className="bm-input w-full px-3 py-2 text-xs"
-                />
-              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {PRESET_TEMPLATES.map((tpl) => {
+                  const isSelected = selectedTemplate.id === tpl.id;
+                  return (
+                    <button
+                      key={tpl.id}
+                      type="button"
+                      onClick={() => handleSelectTemplate(tpl)}
+                      className={`p-3.5 rounded-xl border text-left transition flex flex-col justify-between gap-2 cursor-pointer ${
+                        isSelected
+                          ? 'bg-blue-600/15 border-blue-500 shadow-md ring-1 ring-blue-500/50'
+                          : 'bg-[#0D1220] border-[#1E293B] hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-2">
+                          <div className={`p-1.5 rounded-lg ${isSelected ? 'bg-blue-600 text-white' : 'bg-[#151D30] text-slate-400'}`}>
+                            {tpl.icon === 'utensils' && <Utensils className="w-4 h-4" />}
+                            {tpl.icon === 'flame' && <Flame className="w-4 h-4 text-rose-400" />}
+                            {tpl.icon === 'scissors' && <Scissors className="w-4 h-4 text-emerald-400" />}
+                            {tpl.icon === 'megaphone' && <Megaphone className="w-4 h-4 text-purple-400" />}
+                            {tpl.icon === 'image' && <ImageIcon className="w-4 h-4 text-sky-400" />}
+                          </div>
+                          <span className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-slate-300'}`}>
+                            {tpl.name}
+                          </span>
+                        </div>
+                        {isSelected && <Check className="w-4 h-4 text-blue-400 shrink-0" />}
+                      </div>
 
-              <div className="grid grid-cols-2 gap-3">
+                      <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
+                        {tpl.description}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* STEP 2: BRAND IDENTITY & COLORS */}
+            <div className="space-y-4 p-4 sm:p-5 rounded-2xl bg-[#0B101D] border border-[#1E293B]">
+              <span className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-black flex items-center justify-center">2</span>
+                <span>Dados da Marca & Cores</span>
+              </span>
+
+              <div className="space-y-3.5">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Texto do Badge
+                  <label className="bm-label">
+                    Nome da Empresa ou Estabelecimento *
                   </label>
                   <input
                     type="text"
-                    value={badgeText}
-                    onChange={(e) => setBadgeText(e.target.value)}
-                    placeholder="Ex: CARDÁPIO, OFERTA"
-                    className="bm-input w-full px-3 py-2 text-xs"
+                    value={brandName}
+                    onChange={(e) => setBrandName(e.target.value)}
+                    placeholder="Ex: Hamburgueria Alpha / Barbearia Dom Pedro"
+                    className="bm-input"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
-                    <Palette className="w-3 h-3 text-blue-400" />
-                    <span>Cor da Marca</span>
+                  <label className="bm-label">
+                    Slogan ou Especialidade
                   </label>
-                  <div className="flex items-center gap-1.5 pt-1">
-                    {['#2563EB', '#E11D48', '#0D9488', '#7C3AED', '#D97706'].map((color) => (
+                  <input
+                    type="text"
+                    value={brandSlogan}
+                    onChange={(e) => setBrandSlogan(e.target.value)}
+                    placeholder="Ex: O Melhor Hambúrguer Artesanal da Cidade"
+                    className="bm-input"
+                  />
+                </div>
+
+                {/* COLOR PICKER SECTION */}
+                <div className="p-3.5 rounded-xl bg-[#080C16] border border-[#1E293B] space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                      <Palette className="w-3.5 h-3.5 text-blue-400" />
+                      <span>Cor Principal da Sua Marca</span>
+                    </label>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={accentColor}
+                        onChange={(e) => setAccentColor(e.target.value)}
+                        className="w-7 h-7 rounded-lg cursor-pointer border border-[#1E293B] bg-transparent"
+                        title="Abrir seletor completo de cores"
+                      />
+                      <input
+                        type="text"
+                        value={accentColor}
+                        onChange={(e) => setAccentColor(e.target.value)}
+                        placeholder="#2563EB"
+                        className="w-22 px-2 py-1 rounded-lg bg-[#0B0F1C] border border-[#1E293B] text-xs font-mono text-white text-center font-bold"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Swatches */}
+                  <div className="flex items-center gap-2 flex-wrap pt-1">
+                    {PRESET_COLORS.map((c) => (
                       <button
-                        key={color}
+                        key={c.hex}
                         type="button"
-                        onClick={() => setAccentColor(color)}
-                        style={{ backgroundColor: color }}
-                        className={`w-6 h-6 rounded-full transition-all ${
-                          accentColor === color ? 'ring-2 ring-white scale-110' : 'opacity-70 hover:opacity-100'
+                        onClick={() => setAccentColor(c.hex)}
+                        title={c.name}
+                        style={{ backgroundColor: c.hex }}
+                        className={`w-7 h-7 rounded-full transition-all cursor-pointer ${
+                          accentColor.toLowerCase() === c.hex.toLowerCase()
+                            ? 'ring-2 ring-white scale-110 shadow-lg'
+                            : 'opacity-75 hover:opacity-100 hover:scale-105'
                         }`}
                       />
                     ))}
                   </div>
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Mensagem de Rodapé (WhatsApp / Avisos / Wi-Fi)
-                </label>
-                <input
-                  type="text"
-                  value={footerMessage}
-                  onChange={(e) => setFooterMessage(e.target.value)}
-                  placeholder="Ex: Peça pelo WhatsApp (11) 98765-4321 • Wi-Fi Grátis"
-                  className="bm-input w-full px-3 py-2 text-xs"
-                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="bm-label">
+                      Texto do Badge / Selo
+                    </label>
+                    <input
+                      type="text"
+                      value={badgeText}
+                      onChange={(e) => setBadgeText(e.target.value)}
+                      placeholder="Ex: CARDÁPIO, PROMOÇÃO"
+                      className="bm-input font-bold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="bm-label">
+                      Aviso de Rodapé (WhatsApp / Wi-Fi)
+                    </label>
+                    <input
+                      type="text"
+                      value={footerMessage}
+                      onChange={(e) => setFooterMessage(e.target.value)}
+                      placeholder="Ex: Peça no balcão • Wi-Fi Grátis"
+                      className="bm-input"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Items customization (blank inputs ready to fill) */}
-            <div className="p-4 rounded-xl bg-[#0A0D15] border border-[#1E293B] space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-                <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Pratos, Produtos ou Serviços</span>
-              </h4>
+            {/* STEP 3: TOPICS & ITEMS (Completely redesigned, spacious and mobile-safe) */}
+            <div className="space-y-3.5 p-4 sm:p-5 rounded-2xl bg-[#0B101D] border border-[#1E293B]">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <span className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-black flex items-center justify-center">3</span>
+                  <span>Tópicos & Itens ({topics.length})</span>
+                </span>
 
-              <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
-                {items.map((item, idx) => (
-                  <div key={idx} className="p-2.5 rounded-lg bg-[#0E1424] border border-[#1E293B] space-y-2 text-xs">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={item.name}
-                        onChange={(e) => handleItemChange(idx, 'name', e.target.value)}
-                        placeholder={`Nome do item ${idx + 1} (ex: Smash Burguer)`}
-                        className="bm-input flex-1 px-2.5 py-1.5 text-xs font-medium"
-                      />
-                      <input
-                        type="text"
-                        value={item.price}
-                        onChange={(e) => handleItemChange(idx, 'price', e.target.value)}
-                        placeholder="R$ 0,00"
-                        className="bm-input w-24 px-2.5 py-1.5 text-xs text-center font-bold text-emerald-400"
-                      />
-                    </div>
-                    <input
-                      type="text"
-                      value={item.desc}
-                      onChange={(e) => handleItemChange(idx, 'desc', e.target.value)}
-                      placeholder="Descrição dos ingredientes ou detalhes (opcional)"
-                      className="bm-input w-full px-2.5 py-1 text-[11px] text-slate-400"
-                    />
+                <button
+                  type="button"
+                  onClick={handleAddTopic}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-sm active:scale-95 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Acrescentar Tópico</span>
+                </button>
+              </div>
+
+              {/* Topics list: Clean, roomy cards with zero horizontal overflow */}
+              <div className="space-y-3">
+                {topics.length === 0 ? (
+                  <div className="text-center py-8 text-slate-500 text-xs border border-dashed border-[#1E293B] rounded-2xl p-4">
+                    Nenhum tópico adicionado. Clique no botão acima para acrescentar itens ao seu menu.
                   </div>
-                ))}
+                ) : (
+                  topics.map((t, idx) => (
+                    <div
+                      key={t.id}
+                      className="p-3.5 rounded-xl bg-[#080C16] border border-[#1E293B] hover:border-slate-700 transition space-y-2.5 relative group"
+                    >
+                      {/* Row 1: Item Name (Full Width) + Delete Button */}
+                      <div className="flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-lg bg-[#141C2E] text-slate-400 text-[11px] font-bold flex items-center justify-center shrink-0">
+                          #{idx + 1}
+                        </span>
+                        <input
+                          type="text"
+                          value={t.name}
+                          onChange={(e) => handleTopicChange(t.id, 'name', e.target.value)}
+                          placeholder={`Nome do item ${idx + 1} (ex: Cheeseburger Artesanal, Corte Degradê)`}
+                          className="bm-input py-2 font-semibold"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteTopic(t.id)}
+                          title="Excluir este tópico"
+                          className="p-2 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 border border-transparent hover:border-rose-900/50 transition shrink-0 cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Row 2: Price and Description */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <div className="sm:col-span-1">
+                          <input
+                            type="text"
+                            value={t.price}
+                            onChange={(e) => handleTopicChange(t.id, 'price', e.target.value)}
+                            placeholder="R$ 0,00"
+                            className="bm-input py-2 font-black text-emerald-400 text-center"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <input
+                            type="text"
+                            value={t.desc}
+                            onChange={(e) => handleTopicChange(t.id, 'desc', e.target.value)}
+                            placeholder="Ingredientes ou descrição curta (opcional)"
+                            className="bm-input py-2 text-slate-300"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
 
-          {/* Right Column: Live Simulated Preview on 16:9 TV (7 cols) */}
-          <div className={`lg:col-span-7 flex-col justify-between space-y-3 ${mobileTab === 'preview' ? 'flex' : 'hidden lg:flex'}`}>
-            <div>
-              <div className="flex items-center justify-between pb-1.5">
-                <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+          {/* RIGHT COLUMN: Sticky Live TV Preview (5 cols) */}
+          <div className={`lg:col-span-5 h-full p-4 sm:p-6 bg-[#07090E] border-t lg:border-t-0 lg:border-l border-[#1E293B] flex flex-col justify-between overflow-y-auto ${mobileTab === 'preview' ? 'block' : 'hidden lg:flex'}`}>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between pb-1">
+                <span className="text-xs font-bold text-slate-300 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Prévia em Tempo Real (Smart TV 16:9)</span>
+                  <span>Prévia na Smart TV (16:9 Full HD)</span>
                 </span>
-                <span className="text-[11px] text-slate-500">
-                  Full HD 1080p
+                <span className="text-[11px] text-slate-400 font-mono">
+                  1920 × 1080p
                 </span>
               </div>
 
-              {/* 16:9 Preview Frame */}
-              <div className="aspect-video w-full rounded-xl bg-black border-2 border-[#1E293B] overflow-hidden relative shadow-2xl flex flex-col justify-between p-4 sm:p-5 select-none">
-                {/* Header */}
-                <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
-                  <div>
+              {/* 16:9 TV Display Container */}
+              <div className="aspect-video w-full rounded-2xl bg-black border-2 border-[#1E293B] overflow-hidden relative shadow-2xl flex flex-col justify-between p-4 sm:p-5 select-none">
+                {/* Header preview */}
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                  <div className="min-w-0 pr-2">
                     <span
                       style={{ backgroundColor: accentColor }}
                       className="px-2 py-0.5 rounded text-[9px] font-bold text-white uppercase tracking-wider inline-block mb-1"
                     >
-                      {badgeText || 'DESTAQUE'}
+                      {badgeText || 'CARDÁPIO'}
                     </span>
-                    <h2 className="text-sm sm:text-base font-extrabold text-white tracking-tight uppercase">
-                      {brandName.trim() || 'SUA EMPRESA AQUI'}
-                    </h2>
-                    <p className="text-[10px] text-slate-400">
+                    <h4 className="text-sm font-black text-white tracking-tight uppercase truncate">
+                      {brandName.trim() || 'NOME DA SUA EMPRESA'}
+                    </h4>
+                    <p className="text-[10px] text-slate-400 truncate">
                       {brandSlogan.trim() || 'Seu slogan ou especialidade'}
                     </p>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right shrink-0">
                     <span className="text-xs font-bold text-white tabular-nums">12:30</span>
-                    <span className="text-[9px] text-slate-400 block">TV ATIVA</span>
+                    <span className="text-[8px] text-emerald-400 font-bold block">TV AO VIVO</span>
                   </div>
                 </div>
 
-                {/* Content preview */}
-                <div className="my-auto py-2 space-y-2">
+                {/* Topics preview */}
+                <div className="my-auto py-2 space-y-1.5 overflow-hidden">
                   {selectedTemplate.id === 'promo-dia' ? (
-                    <div className="p-3 rounded-lg bg-slate-900/80 border border-rose-500/60 text-center space-y-2">
-                      <span className="text-xs font-extrabold text-rose-400 block uppercase">
-                        {items[0]?.name || 'PRODUTO EM DESTAQUE'}
+                    <div className="p-3 rounded-xl bg-slate-900/80 border border-rose-500/60 text-center space-y-2">
+                      <span className="text-xs font-black text-rose-400 block uppercase">
+                        {topics[0]?.name || 'SUPER PROMOÇÃO DO DIA'}
                       </span>
-                      <p className="text-[10px] text-slate-300">
-                        {items[0]?.desc || 'Descrição da promoção do seu comércio'}
+                      <p className="text-[10px] text-slate-300 line-clamp-2">
+                        {topics[0]?.desc || 'Condição especial por tempo limitado'}
                       </p>
-                      <div className="text-2xl font-black text-emerald-400">
-                        {items[0]?.price || 'R$ 0,00'}
+                      <div className="text-xl font-black text-emerald-400">
+                        {topics[0]?.price || 'R$ 0,00'}
                       </div>
                     </div>
+                  ) : topics.length === 0 ? (
+                    <div className="text-center py-4 text-slate-600 text-xs">
+                      Nenhum tópico adicionado ainda
+                    </div>
                   ) : (
-                    items.map((it, i) => (
+                    topics.slice(0, 5).map((it, i) => (
                       <div
-                        key={i}
-                        className="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800 text-[11px]"
+                        key={it.id || i}
+                        className="flex items-center justify-between p-2 rounded-lg bg-[#0C1220]/80 border border-slate-800 text-[11px]"
                       >
                         <div className="min-w-0 pr-2">
                           <span className="font-bold text-white block truncate">
-                            {it.name || `Nome do item ${i + 1}`}
+                            {it.name || `Item ${i + 1}`}
                           </span>
-                          <span className="text-[9px] text-slate-400 block truncate">
-                            {it.desc || 'Ingredientes ou detalhes'}
-                          </span>
+                          {it.desc && (
+                            <span className="text-[9px] text-slate-400 block truncate">
+                              {it.desc}
+                            </span>
+                          )}
                         </div>
-                        <span
-                          style={{ borderColor: accentColor }}
-                          className="px-2 py-0.5 rounded bg-slate-950 font-bold text-white text-xs shrink-0 border"
-                        >
-                          {it.price || 'R$ 0,00'}
-                        </span>
+                        {it.price && (
+                          <span
+                            style={{ borderColor: accentColor }}
+                            className="px-2 py-0.5 rounded bg-black font-extrabold text-emerald-400 text-xs shrink-0 border"
+                          >
+                            {it.price}
+                          </span>
+                        )}
                       </div>
                     ))
                   )}
@@ -595,20 +766,20 @@ export const BrandLayoutCustomizerModal: React.FC<BrandLayoutCustomizerModalProp
 
                 {/* Footer preview */}
                 <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[9px] text-slate-400">
-                  <span className="truncate">
-                    📢 {footerMessage.trim() || 'Avisos aos clientes • Peça pelo balcão ou WhatsApp'}
+                  <span className="truncate pr-2">
+                    📢 {footerMessage.trim() || 'Avisos aos clientes • Peça no balcão ou WhatsApp'}
                   </span>
-                  <span className="shrink-0 text-blue-400 font-semibold ml-2">BM Cast TV</span>
+                  <span className="shrink-0 text-blue-400 font-bold">BM Cast</span>
                 </div>
               </div>
             </div>
 
-            {/* Action Bar */}
-            <div className="pt-3 border-t border-[#1E293B] flex items-center justify-end gap-3">
+            {/* Bottom Actions for Desktop Right Column */}
+            <div className="pt-4 border-t border-[#1E293B] hidden lg:flex items-center justify-end gap-3 mt-4">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-lg bg-[#141B2B] hover:bg-[#1B253B] text-slate-300 text-xs font-semibold transition"
+                className="px-4 py-2.5 rounded-xl bg-[#141B2B] hover:bg-[#1B253B] text-slate-300 text-xs font-bold transition cursor-pointer"
               >
                 Cancelar
               </button>
@@ -617,14 +788,36 @@ export const BrandLayoutCustomizerModal: React.FC<BrandLayoutCustomizerModalProp
                 type="button"
                 disabled={isRendering}
                 onClick={handleSaveToMediaLibrary}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-lg disabled:opacity-50"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-lg shadow-blue-900/40 disabled:opacity-50 cursor-pointer"
               >
                 <Sparkles className="w-4 h-4" />
-                <span>{isRendering ? 'Gerando Imagem...' : 'Salvar e Adicionar à TV'}</span>
+                <span>{isRendering ? 'Gerando Imagem...' : 'Salvar e Exibir na TV'}</span>
               </button>
             </div>
           </div>
         </div>
+
+        {/* Global Bottom Actions Footer Bar (Always Visible on Mobile and Tablet) */}
+        <div className="lg:hidden p-3.5 bg-[#0B0F1C] border-t border-[#1E293B] flex items-center justify-between gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl bg-[#141B2B] hover:bg-[#1B253B] text-slate-300 text-xs font-bold transition cursor-pointer"
+          >
+            Cancelar
+          </button>
+
+          <button
+            type="button"
+            disabled={isRendering}
+            onClick={handleSaveToMediaLibrary}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-md shadow-blue-900/40 disabled:opacity-50 cursor-pointer"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>{isRendering ? 'Gerando...' : 'Salvar e Exibir na TV'}</span>
+          </button>
+        </div>
+
       </div>
     </div>
   );

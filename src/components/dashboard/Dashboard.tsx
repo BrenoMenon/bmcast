@@ -12,9 +12,10 @@ import { AuthModal } from '../auth/AuthModal';
 
 interface DashboardProps {
   onOpenPlayer: (slug: string) => void;
+  onSignOut?: () => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ onOpenPlayer }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ onOpenPlayer, onSignOut }) => {
   const [screens, setScreens] = useState<Screen[]>([]);
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
@@ -93,6 +94,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenPlayer }) => {
   const handleSignOut = async () => {
     await authService.signOut();
     setCurrentUser(null);
+    if (onSignOut) {
+      onSignOut();
+    }
   };
 
   if (isLoading) {
@@ -104,7 +108,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenPlayer }) => {
   }
 
   return (
-    <div className="min-h-screen bg-[#07090E] text-slate-100 flex flex-col antialiased selection:bg-blue-600/30 selection:text-blue-200 overflow-x-hidden">
+    <div className="min-h-screen bg-[#07090E] text-slate-100 flex flex-col justify-between antialiased selection:bg-blue-600/30 selection:text-blue-200 overflow-x-hidden">
       <div className="max-w-7xl w-full mx-auto p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 flex-1">
         {/* Header */}
         <DashboardHeader

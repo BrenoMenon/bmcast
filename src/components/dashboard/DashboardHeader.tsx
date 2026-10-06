@@ -47,8 +47,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           <Logo size="md" />
 
           <div className="hidden lg:flex items-center gap-2 text-[11px] text-slate-400 pl-3 border-l border-slate-800">
-            <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="flex items-center gap-1.5 text-blue-400 font-medium">
               <span>Transmissão em Tempo Real</span>
             </span>
           </div>
