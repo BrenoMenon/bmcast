@@ -1,0 +1,8 @@
+{
+  "name": "SignaCast - Digital Signage & TV Menu Micro-SaaS",
+  "description": "Plataforma profissional de sinalização digital e menus dinâmicos para TVs de comércios locais com player de alta performance e dashboard glassmorphism.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
