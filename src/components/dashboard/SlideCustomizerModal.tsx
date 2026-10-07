@@ -11,6 +11,13 @@ import {
   Flame,
   Megaphone,
   Eye,
+  Sliders,
+  Palette,
+  QrCode,
+  Tag,
+  AlertCircle,
+  Search,
+  CheckCircle2,
 } from 'lucide-react';
 import {
   MediaItem,
@@ -30,6 +37,7 @@ interface SlideCustomizerModalProps {
   onClose: () => void;
   onSuccess: (savedItem: MediaItem, addToPlaylist: boolean) => void;
   initialItem?: MediaItem | null;
+  initialCategory?: SlideCategoryType;
   companyProfile: CompanyBrandProfile;
 }
 
@@ -40,96 +48,52 @@ const CATEGORIES: {
   desc: string;
   icon: any;
   defaultAccent: string;
-  defaultHeadline: string;
-  defaultSubheadline: string;
-  defaultOriginalPrice?: string;
-  defaultPromoPrice?: string;
-  defaultQrLabel: string;
 }[] = [
   {
     id: 'cardapio',
-    title: 'Cardápio & Menu Gourmet',
-    badge: 'CARDÁPIO DO CHEF',
-    desc: 'Pratos, hambúrgueres, pizzas, combos e bebidas com preços.',
+    title: 'Cardápio & Preços',
+    badge: 'CARDÁPIO',
+    desc: 'Pratos, hambúrgueres, pizzas, bebidas e itens com preços.',
     icon: Utensils,
     defaultAccent: '#2563EB',
-    defaultHeadline: 'Hambúrguer Artesanal Especial',
-    defaultSubheadline: 'Blend bovino 180g, queijo cheddar derretido, bacon crocante e batata frita.',
-    defaultOriginalPrice: 'R$ 38,90',
-    defaultPromoPrice: 'R$ 29,90',
-    defaultQrLabel: 'Peça no WhatsApp e retire no balcão',
   },
   {
     id: 'promo',
     title: 'Super Promoção & Ofertas',
-    badge: 'SUPER OFERTA LIMITADA',
-    desc: 'Ofertas relâmpago, descontos de happy hour e queima de produtos.',
+    badge: 'PROMOÇÃO',
+    desc: 'Ofertas com tempo limitado, descontos e combos especiais.',
     icon: Flame,
-    defaultAccent: '#E11D48',
-    defaultHeadline: 'Combo Especial com Desconto',
-    defaultSubheadline: 'Válido somente para consumo no salão hoje até às 22h.',
-    defaultOriginalPrice: 'R$ 89,90',
-    defaultPromoPrice: 'R$ 59,90',
-    defaultQrLabel: 'Garanta seu cupom pelo WhatsApp',
+    defaultAccent: '#EF4444',
   },
   {
     id: 'aviso',
-    title: 'Quadro de Avisos & Institucional',
-    badge: 'COMUNICADO IMPORTANTE',
-    desc: 'Horários de funcionamento, Wi-Fi da loja, regras e comunicados.',
+    title: 'Quadro de Avisos & Wi-Fi',
+    badge: 'AVISO IMPORTANTE',
+    desc: 'Horários, Wi-Fi da loja, regras e comunicados corporativos.',
     icon: Megaphone,
-    defaultAccent: '#059669',
-    defaultHeadline: 'Conecte-se ao Wi-Fi Grátis da Casa',
-    defaultSubheadline: 'Aproveite nossa conexão de alta velocidade enquanto aguarda seu pedido.',
-    defaultQrLabel: 'Aponte a câmera e conecte ao Wi-Fi',
+    defaultAccent: '#10B981',
   },
   {
     id: 'mural',
-    title: 'Mural de Fotos & Lançamentos',
-    badge: 'NOVIDADES & LANÇAMENTOS',
-    desc: 'Galeria fotográfica de produtos, novo ambiente, eventos e novidades.',
+    title: 'Mural de Fotos & Institucional',
+    badge: 'COMUNICADO',
+    desc: 'Fotos de novidades, ambiente e mensagens institucionais.',
     icon: ImageIcon,
-    defaultAccent: '#7C3AED',
-    defaultHeadline: 'Novidades & Espaço Climatizado',
-    defaultSubheadline: 'Venha celebrar com seus amigos em nosso ambiente aconchegante.',
-    defaultQrLabel: 'Siga nosso Instagram e confira fotos',
-  },
-];
-
-const PRESET_STOCK_IMAGES = [
-  {
-    label: 'Hambúrguer Smash',
-    url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=1920&q=80',
-  },
-  {
-    label: 'Pizza Forno a Lenha',
-    url: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=1920&q=80',
-  },
-  {
-    label: 'Chopp & Happy Hour',
-    url: 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=1920&q=80',
-  },
-  {
-    label: 'Sobremesa / Shake',
-    url: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=1920&q=80',
-  },
-  {
-    label: 'Café & Confeitaria',
-    url: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1920&q=80',
-  },
-  {
-    label: 'Salão & Ambiente',
-    url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1920&q=80',
+    defaultAccent: '#8B5CF6',
   },
 ];
 
 const COLOR_PRESETS = [
-  { name: 'Azul', hex: '#2563EB' },
-  { name: 'Vermelho', hex: '#E11D48' },
-  { name: 'Esmeralda', hex: '#059669' },
-  { name: 'Âmbar', hex: '#D97706' },
-  { name: 'Roxo', hex: '#7C3AED' },
-  { name: 'Titânio', hex: '#334155' },
+  { name: 'Azul Real', hex: '#2563EB' },
+  { name: 'Azul Celeste', hex: '#38BDF8' },
+  { name: 'Ciano Tech', hex: '#06B6D4' },
+  { name: 'Esmeralda', hex: '#10B981' },
+  { name: 'Laranja Sunset', hex: '#F97316' },
+  { name: 'Vermelho Fogo', hex: '#EF4444' },
+  { name: 'Rosa Pink', hex: '#EC4899' },
+  { name: 'Roxo Neon', hex: '#8B5CF6' },
+  { name: 'Dourado Ouro', hex: '#EAB308' },
+  { name: 'Grafite Escuro', hex: '#334155' },
 ];
 
 export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
@@ -137,15 +101,20 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
   onClose,
   onSuccess,
   initialItem,
+  initialCategory,
   companyProfile,
 }) => {
   const [mobileTab, setMobileTab] = useState<'edit' | 'preview'>('edit');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [title, setTitle] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<SlideCategoryType>('cardapio');
   const [durationSeconds, setDurationSeconds] = useState(12);
   const [addToActivePlaylist, setAddToActivePlaylist] = useState(true);
+
+  // Overlay Darkness
+  const [overlayDarkness, setOverlayDarkness] = useState<number>(0); // 0 to 100
 
   // Brand config
   const [showBrand, setShowBrand] = useState(true);
@@ -156,16 +125,17 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
   const [accentColor, setAccentColor] = useState('#2563EB');
 
   // Category Overlay config
-  const [showOverlayBadge, setShowOverlayBadge] = useState(true);
-  const [showPriceTag, setShowPriceTag] = useState(true);
+  const [showOverlayBadge, setShowOverlayBadge] = useState(false);
+  const [showPriceTag, setShowPriceTag] = useState(false);
   const [badgeText, setBadgeText] = useState('');
   const [headline, setHeadline] = useState('');
   const [subheadline, setSubheadline] = useState('');
   const [priceOriginal, setPriceOriginal] = useState('');
   const [pricePromo, setPricePromo] = useState('');
+  const [discountBadge, setDiscountBadge] = useState('');
 
   // QR Code config
-  const [showQrCode, setShowQrCode] = useState(true);
+  const [showQrCode, setShowQrCode] = useState(false);
   const [qrCodeType, setQrCodeType] = useState<'generated' | 'custom_upload'>('generated');
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [qrCodeCustomImage, setQrCodeCustomImage] = useState('');
@@ -180,6 +150,7 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
   const brandLogoInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
+    setErrorMessage(null);
     if (initialItem) {
       setTitle(initialItem.title || '');
       setImageUrl(initialItem.url || '');
@@ -195,65 +166,75 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
       setAccentColor(b?.accentColor || companyProfile.accentColor || '#2563EB');
 
       const o = initialItem.categoryOverlay;
-      setShowOverlayBadge(o?.showOverlayBadge !== false);
-      setShowPriceTag(o?.showPriceTag !== false);
+      setShowOverlayBadge(o?.showOverlayBadge === true);
+      setShowPriceTag(o?.showPriceTag === true);
       setBadgeText(o?.badgeText || '');
       setHeadline(o?.headline || initialItem.title || '');
       setSubheadline(o?.subheadline || '');
       setPriceOriginal(o?.priceOriginal || '');
       setPricePromo(o?.pricePromo || '');
+      setDiscountBadge(o?.discountPercent || '');
+      setOverlayDarkness(o?.overlayOpacity ?? 0);
 
       const q = initialItem.qrConfig;
-      setShowQrCode(q ? q.showQrCode : true);
+      setShowQrCode(q ? q.showQrCode : false);
       setQrCodeType(q?.qrCodeType || 'generated');
-      setQrCodeUrl(q?.qrCodeUrl || companyProfile.defaultQrCodeUrl || 'https://wa.me/5511999999999');
+      setQrCodeUrl(q?.qrCodeUrl || companyProfile.defaultQrCodeUrl || '');
       setQrCodeCustomImage(q?.qrCodeCustomImage || '');
-      setQrCodeLabel(q?.qrCodeLabel || 'Peça no WhatsApp');
+      setQrCodeLabel(q?.qrCodeLabel || '');
       setQrCodePosition(q?.qrCodePosition || 'bottom-right');
       setQrCodeSize(q?.qrCodeSize || 'medium');
     } else {
-      const defaultCat = CATEGORIES[0];
-      setTitle('Novo Slide');
-      setImageUrl(PRESET_STOCK_IMAGES[0].url);
-      setSelectedCategory('cardapio');
+      const targetCatId = initialCategory || 'cardapio';
+      const targetCat = CATEGORIES.find((c) => c.id === targetCatId) || CATEGORIES[0];
+
+      setTitle('');
+      setImageUrl(''); // 100% BLANK AS REQUESTED!
+      setSelectedCategory(targetCatId);
       setDurationSeconds(12);
 
-      setShowBrand(true);
-      setBrandName(companyProfile.name || 'Minha Empresa');
-      setBrandSlogan(companyProfile.slogan || 'Qualidade & Atendimento');
+      setShowBrand(Boolean(companyProfile.name));
+      setBrandName(companyProfile.name || '');
+      setBrandSlogan(companyProfile.slogan || '');
       setBrandLogo(companyProfile.logoUrl || '');
       setBrandPosition('top-left');
-      setAccentColor(defaultCat.defaultAccent);
+      setAccentColor(targetCat.defaultAccent || '#2563EB');
 
-      setShowOverlayBadge(true);
-      setShowPriceTag(true);
-      setBadgeText(defaultCat.badge);
-      setHeadline(defaultCat.defaultHeadline);
-      setSubheadline(defaultCat.defaultSubheadline);
-      setPriceOriginal(defaultCat.defaultOriginalPrice || 'R$ 38,90');
-      setPricePromo(defaultCat.defaultPromoPrice || 'R$ 29,90');
+      setShowOverlayBadge(false);
+      setShowPriceTag(false);
+      setBadgeText('');
+      setHeadline('');
+      setSubheadline('');
+      setPriceOriginal('');
+      setPricePromo('');
+      setDiscountBadge('');
+      setOverlayDarkness(0);
 
-      setShowQrCode(true);
+      setShowQrCode(false);
       setQrCodeType('generated');
-      setQrCodeUrl(companyProfile.defaultQrCodeUrl || 'https://wa.me/5511999999999');
+      setQrCodeUrl(companyProfile.defaultQrCodeUrl || '');
       setQrCodeCustomImage('');
-      setQrCodeLabel(defaultCat.defaultQrLabel);
+      setQrCodeLabel('');
       setQrCodePosition('bottom-right');
       setQrCodeSize('medium');
     }
-  }, [initialItem, companyProfile, isOpen]);
+  }, [initialItem, initialCategory, companyProfile, isOpen]);
 
   useEffect(() => {
     let isCancelled = false;
     const generate = async () => {
       if (qrCodeType === 'generated') {
-        const dataUrl = await qrService.generateDataUrl(
-          qrCodeUrl || 'https://bmcast.app',
-          '#000000',
-          '#ffffff'
-        );
-        if (!isCancelled) {
-          setGeneratedQrDataUrl(dataUrl);
+        try {
+          const dataUrl = await qrService.generateDataUrl(
+            qrCodeUrl || 'https://bmcast.app',
+            '#000000',
+            '#ffffff'
+          );
+          if (!isCancelled) {
+            setGeneratedQrDataUrl(dataUrl);
+          }
+        } catch (e) {
+          console.error('Falha ao gerar QR:', e);
         }
       }
     };
@@ -275,10 +256,17 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
     setPriceOriginal(cat.defaultOriginalPrice || '');
     setPricePromo(cat.defaultPromoPrice || '');
     setQrCodeLabel(cat.defaultQrLabel);
+
     if (catId === 'aviso' || catId === 'mural') {
       setShowPriceTag(false);
     } else {
       setShowPriceTag(true);
+    }
+
+    // Auto set sample image of category if using preset
+    const matchingImg = PRESET_STOCK_IMAGES.find((s) => s.category === catId);
+    if (matchingImg && (!imageUrl || PRESET_STOCK_IMAGES.some((p) => p.url === imageUrl))) {
+      setImageUrl(matchingImg.url);
     }
   };
 
@@ -291,6 +279,7 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
       if (!title || title === 'Novo Slide') {
         setTitle(file.name.replace(/\.[^/.]+$/, ''));
       }
+      setErrorMessage(null);
     } catch (err) {
       console.error('Erro na imagem:', err);
     }
@@ -321,7 +310,7 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
 
   const handleSave = () => {
     if (!imageUrl) {
-      alert('Selecione uma imagem para o slide.');
+      setErrorMessage('Por favor, selecione ou envie uma imagem de fundo para o slide.');
       return;
     }
 
@@ -355,11 +344,13 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
       showOverlayBadge,
       showPriceTag,
       position: 'bottom',
+      overlayOpacity: overlayDarkness,
+      discountPercent: discountBadge.trim(),
     };
 
     const savedMediaItem: MediaItem = {
       id: initialItem?.id || `slide-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      title: title.trim() || 'Slide',
+      title: title.trim() || headline.trim() || 'Slide BM Cast',
       type: 'image',
       url: imageUrl,
       thumbnail: imageUrl,
@@ -378,30 +369,32 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
 
   if (!isOpen) return null;
 
-  const resolvedQrImage = qrCodeType === 'custom_upload' && qrCodeCustomImage ? qrCodeCustomImage : generatedQrDataUrl;
+  const resolvedQrImage =
+    qrCodeType === 'custom_upload' && qrCodeCustomImage ? qrCodeCustomImage : generatedQrDataUrl;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-150">
-      <div className="relative w-full max-w-6xl bg-[#151f32] border border-[#25334a] rounded-3xl overflow-hidden flex flex-col max-h-[95vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto animate-in fade-in duration-150">
+      <div className="relative w-full max-w-6xl bg-slate-900 border border-slate-700/80 rounded-3xl overflow-hidden flex flex-col max-h-[95vh] shadow-2xl">
         {/* Modal Top Bar */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-[#25334a] bg-[#0d131f]">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-800 bg-slate-900/90">
           <div>
-            <h2 className="text-sm sm:text-base font-bold text-white ">
-              {initialItem ? 'Editar Slide da TV' : 'Criar Novo Slide'}
+            <h2 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-blue-400" />
+              <span>{initialItem ? 'Editar Slide da TV' : 'Criar Novo Slide'}</span>
             </h2>
             <p className="text-[11px] text-slate-400">
-              Personalização de marca, categoria comercial e posicionamento do QR Code
+              Personalização completa: cores, fotos, preços, marca e QR Code dinâmico
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             {/* Mobile Tab */}
-            <div className="flex lg:hidden bg-[#151f32] p-0.5 rounded border border-[#25334a]">
+            <div className="flex lg:hidden bg-slate-800 p-0.5 rounded-full border border-slate-700">
               <button
                 type="button"
                 onClick={() => setMobileTab('edit')}
-                className={`px-2.5 py-1 rounded text-[11px] font-semibold ${
-                  mobileTab === 'edit' ? 'bg-slate-800 text-white' : 'text-slate-400'
+                className={`px-3 py-1 rounded-full text-[11px] font-bold transition-all ${
+                  mobileTab === 'edit' ? 'bg-blue-600 text-white shadow' : 'text-slate-400'
                 }`}
               >
                 Ajustes
@@ -409,8 +402,8 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
               <button
                 type="button"
                 onClick={() => setMobileTab('preview')}
-                className={`px-2.5 py-1 rounded text-[11px] font-semibold ${
-                  mobileTab === 'preview' ? 'bg-slate-800 text-white' : 'text-slate-400'
+                className={`px-3 py-1 rounded-full text-[11px] font-bold transition-all ${
+                  mobileTab === 'preview' ? 'bg-blue-600 text-white shadow' : 'text-slate-400'
                 }`}
               >
                 Preview TV
@@ -419,24 +412,60 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
 
             <button
               onClick={onClose}
-              className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              className="p-1.5 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
+        {/* Error message banner */}
+        {errorMessage && (
+          <div className="px-5 py-2.5 bg-red-950/60 border-b border-red-800 text-xs text-red-200 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+        )}
+
         {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto grid grid-cols-1 lg:grid-cols-12 gap-5 p-4 sm:p-5">
-          {/* Form Column (Desktop or mobileTab === 'edit') */}
+        <div className="flex-1 overflow-y-auto grid grid-cols-1 lg:grid-cols-12 gap-5 p-4 sm:p-6">
+          {/* Form Column */}
           <div className={`lg:col-span-7 space-y-4 ${mobileTab === 'preview' ? 'hidden lg:block' : 'block'}`}>
+            {/* Category Selector Tabs */}
+            <div className="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-3.5 space-y-2">
+              <span className="text-xs font-bold text-slate-200 uppercase tracking-wider block">
+                Tipo do Slide:
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {CATEGORIES.map((cat) => {
+                  const Icon = cat.icon;
+                  const isSel = selectedCategory === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => handleCategorySelect(cat.id)}
+                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1 ${
+                        isSel
+                          ? 'bg-blue-600 text-white border-blue-400 shadow-md font-bold'
+                          : 'bg-slate-900 border-slate-700 text-slate-300 hover:border-slate-600'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      <span className="text-xs leading-tight">{cat.title.split('&')[0]}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* 1. Imagem de Fundo */}
-            <div className="bg-[#0d131f] border border-[#25334a] rounded-lg p-3.5 space-y-2.5">
+            <div className="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-white uppercase tracking-wider">
-                  01. Imagem de Fundo (16:9)
+                <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">
+                  01. Imagem de Fundo (16:9 Full HD)
                 </span>
-                <span className="text-[10px] text-slate-500 ">1920x1080</span>
+                <span className="text-[10px] text-slate-400">1920x1080</span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -450,211 +479,261 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center justify-center gap-1.5 py-2 px-3 bg-[#151f32] hover:bg-slate-800 border border-[#25334a] text-slate-200 text-xs font-medium rounded transition-colors cursor-pointer"
+                  className="flex items-center justify-center gap-2 py-2.5 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow"
                 >
-                  <Upload className="w-3.5 h-3.5 text-blue-400" />
-                  Subir Imagem do Dispositivo
+                  <Upload className="w-4 h-4" />
+                  <span>Enviar Foto do Computador / Celular</span>
                 </button>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={imageUrl}
+                    onChange={(e) => {
+                      setImageUrl(e.target.value);
+                      setErrorMessage(null);
+                    }}
+                    placeholder="Ou cole o link direto da imagem..."
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* Image Status & Clear Action */}
+              <div className="pt-2 border-t border-slate-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                {imageUrl ? (
+                  <div className="flex items-center gap-2 text-emerald-400 font-semibold">
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
+                    <span className="truncate max-w-xs">Foto anexada ao slide</span>
+                    <button
+                      type="button"
+                      onClick={() => setImageUrl('')}
+                      className="px-2.5 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 text-[11px] font-bold border border-red-500/40 cursor-pointer transition-colors"
+                    >
+                      Remover Imagem (Deixar em Branco)
+                    </button>
+                  </div>
+                ) : (
+                  <span className="text-[11px] text-slate-400">
+                    Nenhuma foto selecionada. O slide usará fundo limpo na sua cor de destaque.
+                  </span>
+                )}
+              </div>
+
+              {/* Overlay Darkness Slider */}
+              <div className="pt-2 border-t border-slate-700/60 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2 text-xs text-slate-300">
+                  <Sliders className="w-3.5 h-3.5 text-blue-400" />
+                  <span>Contraste / Escurecimento do Fundo:</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {[30, 50, 70, 85].map((val) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setOverlayDarkness(val)}
+                      className={`px-2.5 py-1 rounded-full text-[11px] font-bold cursor-pointer transition-colors ${
+                        overlayDarkness === val
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-slate-900 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {val}%
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Cores e Estilo */}
+            <div className="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                  <Palette className="w-3.5 h-3.5 text-blue-400" />
+                  <span>02. Cor de Destaque & Identidade Visual</span>
+                </span>
+                <span className="text-xs font-mono font-bold text-blue-400">{accentColor}</span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {COLOR_PRESETS.map((c) => (
+                  <button
+                    key={c.hex}
+                    type="button"
+                    onClick={() => setAccentColor(c.hex)}
+                    className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+                      accentColor.toUpperCase() === c.hex.toUpperCase()
+                        ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-900 scale-110'
+                        : 'opacity-85 hover:opacity-100 hover:scale-105'
+                    }`}
+                    style={{ backgroundColor: c.hex }}
+                    title={c.name}
+                  >
+                    {accentColor.toUpperCase() === c.hex.toUpperCase() && (
+                      <Check className="w-3.5 h-3.5 text-white drop-shadow" />
+                    )}
+                  </button>
+                ))}
+
+                {/* Free Color Picker */}
+                <div className="flex items-center gap-1.5 pl-2 border-l border-slate-700">
+                  <label className="text-[11px] text-slate-300 font-semibold cursor-pointer">
+                    Cor Livre:
+                  </label>
+                  <input
+                    type="color"
+                    value={accentColor}
+                    onChange={(e) => setAccentColor(e.target.value)}
+                    className="w-8 h-8 rounded-full border border-slate-600 bg-transparent cursor-pointer"
+                    title="Escolha qualquer cor personalizada"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Textos, Badge e Preços */}
+            <div className="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-4 space-y-3">
+              <span className="text-xs font-bold text-slate-200 uppercase tracking-wider block">
+                03. Título, Destaques e Valores
+              </span>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div>
+                  <label className="block text-[11px] text-slate-400 mb-1 font-medium">Etiqueta Badge</label>
+                  <input
+                    type="text"
+                    value={badgeText}
+                    onChange={(e) => setBadgeText(e.target.value)}
+                    placeholder="Ex: MAIS PEDIDO"
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white uppercase focus:outline-none focus:border-blue-500 font-bold"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] text-slate-400 mb-1 font-medium">Título do Slide / Produto</label>
+                  <input
+                    type="text"
+                    value={headline}
+                    onChange={(e) => setHeadline(e.target.value)}
+                    placeholder="Ex: Combo Especial Smash Burger"
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-slate-400 mb-1 font-medium">Descrição Detalhada</label>
                 <input
                   type="text"
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="Ou cole o link da imagem..."
-                  className="w-full px-2.5 py-1.5 bg-[#151f32] border border-[#25334a] rounded text-xs text-white placeholder-slate-600 focus:outline-none focus:border-blue-500"
+                  value={subheadline}
+                  onChange={(e) => setSubheadline(e.target.value)}
+                  placeholder="Ex: Acompanha batatas rústicas crocantes e refrigerante lata gelado..."
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-blue-500"
                 />
               </div>
 
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 pt-1">
-                {PRESET_STOCK_IMAGES.map((preset, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => {
-                      setImageUrl(preset.url);
-                      if (!title || title === 'Novo Slide') setTitle(preset.label);
-                    }}
-                    className={`relative aspect-video rounded overflow-hidden border transition-colors cursor-pointer ${
-                      imageUrl === preset.url
-                        ? 'border-blue-500'
-                        : 'border-[#25334a] hover:border-slate-600 opacity-70 hover:opacity-100'
-                    }`}
-                  >
-                    <img src={preset.url} alt={preset.label} className="w-full h-full object-cover" />
-                    <span className="absolute inset-x-0 bottom-0 bg-black/80 text-[8px] text-white py-0.5 text-center truncate px-0.5">
-                      {preset.label}
+              {/* Price Tags */}
+              <div className="p-3 bg-slate-900 rounded-xl border border-slate-700 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-300 flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={showPriceTag}
+                      onChange={(e) => setShowPriceTag(e.target.checked)}
+                      className="rounded bg-slate-800 border-slate-700 text-blue-600"
+                    />
+                    <span>Exibir Bloco de Preços</span>
+                  </label>
+
+                  {showPriceTag && (
+                    <span className="text-[11px] text-blue-400 font-semibold">
+                      Com destaque visual na TV
                     </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 2. Categoria */}
-            <div className="bg-[#0d131f] border border-[#25334a] rounded-lg p-3.5 space-y-2">
-              <span className="text-xs font-bold text-white uppercase tracking-wider block">
-                02. Categoria Comercial
-              </span>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {CATEGORIES.map((cat) => {
-                  const Icon = cat.icon;
-                  const isSelected = selectedCategory === cat.id;
-                  return (
-                    <div
-                      key={cat.id}
-                      onClick={() => handleCategorySelect(cat.id)}
-                      className={`p-2.5 rounded border transition-colors cursor-pointer flex items-start gap-2.5 ${
-                        isSelected
-                          ? 'bg-[#151f32] border-blue-500'
-                          : 'bg-[#151f32]/60 border-[#25334a] hover:border-[#2B354C]'
-                      }`}
-                    >
-                      <Icon className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
-                      <div className="min-w-0">
-                        <div className="text-xs font-semibold text-white truncate">{cat.title}</div>
-                        <div className="text-[10px] text-slate-400 line-clamp-1">{cat.desc}</div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* 3. Marca da Empresa no Slide */}
-            <div className="bg-[#0d131f] border border-[#25334a] rounded-lg p-3.5 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-white uppercase tracking-wider">
-                  03. Marca da Empresa
-                </span>
-
-                <label className="text-xs font-medium text-slate-300 flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={showBrand}
-                    onChange={(e) => setShowBrand(e.target.checked)}
-                    className="rounded bg-[#151f32] border-[#2B354C] text-blue-600"
-                  />
-                  Mostrar marca neste slide
-                </label>
-              </div>
-
-              {showBrand && (
-                <div className="space-y-2 pt-1 border-t border-[#25334a]/80">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[11px] text-slate-400 mb-1">Nome no Slide</label>
-                      <input
-                        type="text"
-                        value={brandName}
-                        onChange={(e) => setBrandName(e.target.value)}
-                        placeholder="Ex: Minha Empresa"
-                        className="w-full px-2.5 py-1.5 bg-[#151f32] border border-[#25334a] rounded text-xs text-white focus:outline-none focus:border-blue-500 font-semibold"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] text-slate-400 mb-1">Slogan</label>
-                      <input
-                        type="text"
-                        value={brandSlogan}
-                        onChange={(e) => setBrandSlogan(e.target.value)}
-                        placeholder="Ex: Qualidade & Atendimento"
-                        className="w-full px-2.5 py-1.5 bg-[#151f32] border border-[#25334a] rounded text-xs text-white focus:outline-none focus:border-blue-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[11px] text-slate-400 mb-1">Posição na Tela</label>
-                      <select
-                        value={brandPosition}
-                        onChange={(e) => setBrandPosition(e.target.value as BrandPosition)}
-                        className="w-full px-2.5 py-1.5 bg-[#151f32] border border-[#25334a] rounded text-xs text-white focus:outline-none focus:border-blue-500"
-                      >
-                        <option value="top-left">Canto Superior Esquerdo</option>
-                        <option value="top-right">Canto Superior Direito</option>
-                        <option value="header-bar">Barra Superior Completa</option>
-                        <option value="bottom-left">Canto Inferior Esquerdo</option>
-                        <option value="bottom-right">Canto Inferior Direito</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] text-slate-400 mb-1">Logo Específico</label>
-                      <input
-                        type="file"
-                        ref={brandLogoInputRef}
-                        onChange={handleBrandLogoFileChange}
-                        accept="image/*"
-                        className="hidden"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => brandLogoInputRef.current?.click()}
-                        className="w-full py-1.5 px-2 bg-[#151f32] hover:bg-slate-800 border border-[#25334a] rounded text-xs text-slate-300 transition-colors cursor-pointer truncate"
-                      >
-                        {brandLogo ? 'Trocar Logo' : 'Subir Arquivo de Logo'}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] text-slate-400 mb-1">Cor da Marca</label>
-                    <div className="flex items-center gap-1.5">
-                      {COLOR_PRESETS.map((c) => (
-                        <button
-                          key={c.hex}
-                          type="button"
-                          onClick={() => setAccentColor(c.hex)}
-                          className={`w-5 h-5 rounded flex items-center justify-center transition-colors cursor-pointer ${
-                            accentColor === c.hex ? 'ring-2 ring-white' : 'opacity-80 hover:opacity-100'
-                          }`}
-                          style={{ backgroundColor: c.hex }}
-                        />
-                      ))}
-                    </div>
-                  </div>
+                  )}
                 </div>
-              )}
+
+                {showPriceTag && (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                    <div>
+                      <label className="block text-[10px] text-slate-400 mb-1">Preço Normal (R$)</label>
+                      <input
+                        type="text"
+                        value={priceOriginal}
+                        onChange={(e) => setPriceOriginal(e.target.value)}
+                        placeholder="Ex: R$ 49,90"
+                        className="w-full px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs text-slate-300 line-through"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] text-emerald-400 mb-1 font-bold">Preço Promocional (R$)</label>
+                      <input
+                        type="text"
+                        value={pricePromo}
+                        onChange={(e) => setPricePromo(e.target.value)}
+                        placeholder="Ex: R$ 36,90"
+                        className="w-full px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white font-extrabold"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] text-amber-400 mb-1 font-medium">Selo de Desconto</label>
+                      <input
+                        type="text"
+                        value={discountBadge}
+                        onChange={(e) => setDiscountBadge(e.target.value)}
+                        placeholder="Ex: 25% OFF"
+                        className="w-full px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs text-amber-300 font-bold"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* 4. QR Code */}
-            <div className="bg-[#0d131f] border border-[#25334a] rounded-lg p-3.5 space-y-2.5">
+            <div className="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-white uppercase tracking-wider">
-                  04. QR Code do Slide
+                <span className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                  <QrCode className="w-3.5 h-3.5 text-blue-400" />
+                  <span>04. QR Code Interativo</span>
                 </span>
 
-                <label className="text-xs font-medium text-slate-300 flex items-center gap-2 cursor-pointer">
+                <label className="text-xs font-bold text-slate-300 flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={showQrCode}
                     onChange={(e) => setShowQrCode(e.target.checked)}
-                    className="rounded bg-[#151f32] border-[#2B354C] text-blue-600"
+                    className="rounded bg-slate-800 border-slate-700 text-blue-600"
                   />
-                  Exibir QR Code
+                  <span>Exibir na TV</span>
                 </label>
               </div>
 
               {showQrCode && (
-                <div className="space-y-2 pt-1 border-t border-[#25334a]/80">
-                  <div className="flex bg-[#151f32] p-1 rounded border border-[#25334a]">
+                <div className="space-y-3 pt-1 border-t border-slate-700/60">
+                  <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-700">
                     <button
                       type="button"
                       onClick={() => setQrCodeType('generated')}
-                      className={`flex-1 py-1 rounded text-xs font-semibold transition-colors cursor-pointer ${
-                        qrCodeType === 'generated' ? 'bg-slate-800 text-white' : 'text-slate-400'
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        qrCodeType === 'generated'
+                          ? 'bg-blue-600 text-white shadow'
+                          : 'text-slate-400 hover:text-white'
                       }`}
                     >
-                      Gerar por Link
+                      Gerar por Link / WhatsApp
                     </button>
                     <button
                       type="button"
                       onClick={() => setQrCodeType('custom_upload')}
-                      className={`flex-1 py-1 rounded text-xs font-semibold transition-colors cursor-pointer ${
-                        qrCodeType === 'custom_upload' ? 'bg-slate-800 text-white' : 'text-slate-400'
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        qrCodeType === 'custom_upload'
+                          ? 'bg-blue-600 text-white shadow'
+                          : 'text-slate-400 hover:text-white'
                       }`}
                     >
-                      Subir QR Real
+                      Subir Imagem de QR Real
                     </button>
                   </div>
 
@@ -665,8 +744,8 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
                         type="text"
                         value={qrCodeUrl}
                         onChange={(e) => setQrCodeUrl(e.target.value)}
-                        placeholder="https://wa.me/... ou https://..."
-                        className="w-full px-2.5 py-1.5 bg-[#151f32] border border-[#25334a] rounded text-xs text-white  focus:outline-none focus:border-blue-500"
+                        placeholder="https://wa.me/5511999999999 ou https://seucardapio.com"
+                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-blue-500 font-mono"
                       />
                     </div>
                   ) : (
@@ -682,22 +761,22 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
                       <button
                         type="button"
                         onClick={() => qrImageInputRef.current?.click()}
-                        className="w-full py-1.5 px-2 bg-[#151f32] hover:bg-slate-800 border border-[#25334a] rounded text-xs text-slate-300 transition-colors cursor-pointer"
+                        className="w-full py-2 px-3 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-xl text-xs text-slate-200 transition-colors cursor-pointer"
                       >
-                        {qrCodeCustomImage ? 'Substituir Imagem do QR' : 'Selecionar Arquivo'}
+                        {qrCodeCustomImage ? 'Substituir Imagem do QR Code' : 'Selecionar Arquivo de Imagem'}
                       </button>
                     </div>
                   )}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <div>
-                      <label className="block text-[11px] text-slate-400 mb-1">Chamada Abaixo do QR</label>
+                      <label className="block text-[11px] text-slate-400 mb-1">Chamada do QR</label>
                       <input
                         type="text"
                         value={qrCodeLabel}
                         onChange={(e) => setQrCodeLabel(e.target.value)}
                         placeholder="Ex: Peça pelo WhatsApp"
-                        className="w-full px-2.5 py-1.5 bg-[#151f32] border border-[#25334a] rounded text-xs text-white focus:outline-none focus:border-blue-500"
+                        className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-blue-500"
                       />
                     </div>
                     <div>
@@ -705,13 +784,12 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
                       <select
                         value={qrCodePosition}
                         onChange={(e) => setQrCodePosition(e.target.value as QrCodePosition)}
-                        className="w-full px-2.5 py-1.5 bg-[#151f32] border border-[#25334a] rounded text-xs text-white focus:outline-none focus:border-blue-500"
+                        className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-blue-500"
                       >
                         <option value="bottom-right">Canto Inferior Direito</option>
                         <option value="bottom-left">Canto Inferior Esquerdo</option>
                         <option value="top-right">Canto Superior Direito</option>
                         <option value="top-left">Canto Superior Esquerdo</option>
-                        <option value="center-right">Lateral Centro</option>
                       </select>
                     </div>
                   </div>
@@ -719,145 +797,136 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
               )}
             </div>
 
-            {/* 5. Textos e Preços */}
-            <div className="bg-[#0d131f] border border-[#25334a] rounded-lg p-3.5 space-y-2">
-              <span className="text-xs font-bold text-white uppercase tracking-wider block">
-                05. Título e Preços
-              </span>
-
-              <div className="space-y-2">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <div>
-                    <label className="block text-[11px] text-slate-400 mb-1">Badge</label>
-                    <input
-                      type="text"
-                      value={badgeText}
-                      onChange={(e) => setBadgeText(e.target.value)}
-                      placeholder="Ex: OFERTA"
-                      className="w-full px-2.5 py-1.5 bg-[#151f32] border border-[#25334a] rounded text-xs text-white uppercase focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="block text-[11px] text-slate-400 mb-1">Título do Slide</label>
-                    <input
-                      type="text"
-                      value={headline}
-                      onChange={(e) => setHeadline(e.target.value)}
-                      placeholder="Ex: Hambúrguer Artesanal com Batata"
-                      className="w-full px-2.5 py-1.5 bg-[#151f32] border border-[#25334a] rounded text-xs text-white font-semibold focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] text-slate-400 mb-1">Descrição</label>
+            {/* 5. Identidade da Marca & Duração */}
+            <div className="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                  <Store className="w-3.5 h-3.5 text-blue-400" />
+                  <span>05. Marca da Empresa no Slide</span>
+                </span>
+                <label className="text-xs font-bold text-slate-300 flex items-center gap-2 cursor-pointer">
                   <input
-                    type="text"
-                    value={subheadline}
-                    onChange={(e) => setSubheadline(e.target.value)}
-                    placeholder="Ex: Acompanha refrigerante e molho..."
-                    className="w-full px-2.5 py-1.5 bg-[#151f32] border border-[#25334a] rounded text-xs text-white focus:outline-none focus:border-blue-500"
+                    type="checkbox"
+                    checked={showBrand}
+                    onChange={(e) => setShowBrand(e.target.checked)}
+                    className="rounded bg-slate-800 border-slate-700 text-blue-600"
                   />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 p-2 bg-[#151f32] rounded border border-[#25334a]">
-                  <div>
-                    <label className="block text-[10px] text-slate-500 mb-1">Preço Normal</label>
-                    <input
-                      type="text"
-                      value={priceOriginal}
-                      onChange={(e) => setPriceOriginal(e.target.value)}
-                      placeholder="Ex: R$ 45,90"
-                      className="w-full px-2 py-1 bg-[#0d131f] border border-[#25334a] rounded text-xs text-slate-400 line-through  tabular-nums"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-blue-400 mb-1">Preço Promocional</label>
-                    <input
-                      type="text"
-                      value={pricePromo}
-                      onChange={(e) => setPricePromo(e.target.value)}
-                      placeholder="Ex: R$ 34,90"
-                      className="w-full px-2 py-1 bg-[#0d131f] border border-[#25334a] rounded text-xs text-blue-300 font-bold  tabular-nums"
-                    />
-                  </div>
-                </div>
+                  <span>Exibir Logo e Nome</span>
+                </label>
               </div>
-            </div>
 
-            {/* Duração */}
-            <div className="flex items-center justify-between p-2.5 bg-[#0d131f] border border-[#25334a] rounded">
-              <span className="text-xs text-slate-300">Tempo de Exibição:</span>
-              <div className="flex items-center gap-1">
-                {[8, 12, 15, 20, 30].map((sec) => (
-                  <button
-                    key={sec}
-                    type="button"
-                    onClick={() => setDurationSeconds(sec)}
-                    className={`px-2 py-1 rounded text-xs  tabular-nums ${
-                      durationSeconds === sec
-                        ? 'bg-[#2dd4bf] text-[#042f2e] font-bold'
-                        : 'bg-[#151f32] text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    {sec}s
-                  </button>
-                ))}
+              {showBrand && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 border-t border-slate-700/60">
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">Nome da Empresa</label>
+                    <input
+                      type="text"
+                      value={brandName}
+                      onChange={(e) => setBrandName(e.target.value)}
+                      placeholder="Ex: Minha Empresa"
+                      className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-blue-500 font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">Slogan ou Subtítulo</label>
+                    <input
+                      type="text"
+                      value={brandSlogan}
+                      onChange={(e) => setBrandSlogan(e.target.value)}
+                      placeholder="Ex: Desde 2018 com o melhor sabor"
+                      className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Tempo de Exibição */}
+              <div className="pt-2 border-t border-slate-700/60 flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-blue-400" />
+                  <span>Tempo de Exibição na TV:</span>
+                </span>
+                <div className="flex items-center gap-1.5">
+                  {[8, 12, 15, 20, 30].map((sec) => (
+                    <button
+                      key={sec}
+                      type="button"
+                      onClick={() => setDurationSeconds(sec)}
+                      className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                        durationSeconds === sec
+                          ? 'bg-blue-600 text-white shadow'
+                          : 'bg-slate-900 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {sec}s
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* TV Live Preview Column (Desktop or mobileTab === 'preview') */}
-          <div className={`lg:col-span-5 space-y-3 ${mobileTab === 'edit' ? 'hidden lg:block' : 'block'}`}>
+          {/* TV Live Preview Column */}
+          <div className={`lg:col-span-5 space-y-4 ${mobileTab === 'edit' ? 'hidden lg:block' : 'block'}`}>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-white uppercase tracking-wider">
-                Simulador da TV ao Vivo
+              <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                <Eye className="w-3.5 h-3.5 text-blue-400" />
+                <span>Simulador da TV ao Vivo</span>
               </span>
-              <span className="text-[10px] text-slate-500 ">16:9 FULL HD</span>
+              <span className="text-[10px] font-bold text-blue-400 bg-blue-500/15 border border-blue-500/30 px-2 py-0.5 rounded-full">
+                16:9 FULL HD
+              </span>
             </div>
 
             {/* Realistic TV Bezel */}
-            <div className="bg-black rounded-lg p-2 border border-[#25334a] flex flex-col">
-              <div className="relative aspect-video bg-black rounded overflow-hidden flex flex-col justify-between">
+            <div className="bg-slate-950 rounded-2xl p-3 border-2 border-slate-700 shadow-2xl flex flex-col">
+              <div className="relative aspect-video bg-black rounded-lg overflow-hidden flex flex-col justify-between shadow-inner">
                 {imageUrl ? (
                   <img src={imageUrl} alt="Preview" className="absolute inset-0 w-full h-full object-cover" />
                 ) : (
-                  <div className="absolute inset-0 flex items-center justify-center bg-slate-950 text-slate-600 text-xs">
-                    Sem imagem
+                  <div className="absolute inset-0 flex items-center justify-center bg-slate-950 text-slate-600 text-xs font-medium">
+                    Selecione uma imagem
                   </div>
                 )}
 
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/60 pointer-events-none" />
+                {/* Darkness Overlay */}
+                <div
+                  className="absolute inset-0 pointer-events-none transition-opacity"
+                  style={{
+                    backgroundColor: `rgba(0, 0, 0, ${overlayDarkness / 100})`,
+                  }}
+                />
 
-                {/* 1. BRAND */}
+                {/* 1. BRAND ON TV */}
                 {showBrand && (
                   <div
-                    className={`relative z-10 p-2 flex items-center gap-2 ${
-                      brandPosition === 'top-right'
-                        ? 'justify-end'
-                        : brandPosition === 'header-bar'
-                        ? 'bg-black/60 border-b border-white/10 w-full justify-between'
-                        : 'justify-start'
+                    className={`relative z-10 p-2.5 flex items-center gap-2 ${
+                      brandPosition === 'top-right' ? 'justify-end' : 'justify-start'
                     }`}
                   >
                     <div
-                      className="flex items-center gap-1.5 px-2 py-1 rounded border shadow-sm"
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl border shadow-lg backdrop-blur-md"
                       style={{
-                        backgroundColor: 'rgba(9, 13, 22, 0.85)',
-                        borderColor: `${accentColor}50`,
+                        backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                        borderColor: `${accentColor}60`,
                       }}
                     >
                       {brandLogo ? (
-                        <img src={brandLogo} alt="Logo" className="w-4 h-4 object-contain rounded" />
+                        <img src={brandLogo} alt="Logo" className="w-5 h-5 object-contain rounded" />
                       ) : (
-                        <Store className="w-3.5 h-3.5 text-white" />
+                        <div
+                          className="w-5 h-5 rounded-full flex items-center justify-center text-white"
+                          style={{ backgroundColor: accentColor }}
+                        >
+                          <Store className="w-3 h-3" />
+                        </div>
                       )}
                       <div>
-                        <div className="font-bold text-[10px] text-white tracking-wide uppercase  leading-none">
+                        <div className="font-extrabold text-[11px] text-white tracking-wide uppercase leading-tight">
                           {brandName || companyProfile.name || 'Minha Empresa'}
                         </div>
                         {(brandSlogan || companyProfile.slogan) && (
-                          <div className="text-[8px] text-slate-400 font-medium tracking-tight mt-0.5">
+                          <div className="text-[8px] text-slate-300 font-medium tracking-tight">
                             {brandSlogan || companyProfile.slogan}
                           </div>
                         )}
@@ -866,22 +935,20 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
                   </div>
                 )}
 
-                {/* 2. QR CODE */}
+                {/* 2. QR CODE ON TV */}
                 {showQrCode && resolvedQrImage && (
                   <div
-                    className={`absolute z-20 p-2 ${
+                    className={`absolute z-20 p-2.5 ${
                       qrCodePosition === 'bottom-right'
                         ? 'bottom-2 right-2'
                         : qrCodePosition === 'bottom-left'
                         ? 'bottom-2 left-2'
                         : qrCodePosition === 'top-right'
                         ? 'top-2 right-2'
-                        : qrCodePosition === 'top-left'
-                        ? 'top-2 left-2'
-                        : 'top-1/2 -translate-y-1/2 right-2'
+                        : 'top-2 left-2'
                     }`}
                   >
-                    <div className="bg-white p-1 rounded shadow flex flex-col items-center max-w-[100px]">
+                    <div className="bg-white p-1.5 rounded-xl shadow-2xl flex flex-col items-center max-w-[110px] border border-white">
                       <div
                         className={`${
                           qrCodeSize === 'small' ? 'w-12 h-12' : qrCodeSize === 'medium' ? 'w-16 h-16' : 'w-20 h-20'
@@ -890,7 +957,7 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
                         <img src={resolvedQrImage} alt="QR Code" className="w-full h-full object-contain" />
                       </div>
                       {qrCodeLabel && (
-                        <span className="text-[7px] font-bold text-slate-900 text-center leading-tight mt-0.5">
+                        <span className="text-[7.5px] font-extrabold text-slate-900 text-center leading-tight mt-1">
                           {qrCodeLabel}
                         </span>
                       )}
@@ -898,12 +965,12 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
                   </div>
                 )}
 
-                {/* 3. HEADLINE & PRICE */}
-                <div className="relative z-10 p-2 mt-auto">
-                  <div className="max-w-[70%] space-y-0.5">
+                {/* 3. HEADLINE, BADGE & PRICE */}
+                <div className="relative z-10 p-3 mt-auto">
+                  <div className="max-w-[70%] space-y-1">
                     {showOverlayBadge && badgeText && (
                       <span
-                        className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase text-white shadow-sm"
+                        className="inline-block px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase text-white shadow-md tracking-wider"
                         style={{ backgroundColor: accentColor }}
                       >
                         {badgeText}
@@ -911,30 +978,35 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
                     )}
 
                     {headline && (
-                      <h4 className="text-white font-bold text-xs sm:text-sm leading-tight drop-shadow">
+                      <h4 className="text-white font-black text-sm sm:text-base leading-tight drop-shadow-md">
                         {headline}
                       </h4>
                     )}
 
                     {subheadline && (
-                      <p className="text-slate-300 text-[8px] line-clamp-1 drop-shadow">
+                      <p className="text-slate-200 text-[9px] line-clamp-2 drop-shadow leading-snug">
                         {subheadline}
                       </p>
                     )}
 
                     {showPriceTag && (priceOriginal || pricePromo) && (
-                      <div className="flex items-baseline gap-1.5 pt-0.5">
+                      <div className="flex items-center gap-2 pt-1">
                         {priceOriginal && (
-                          <span className="text-slate-400 text-[9px] line-through  tabular-nums">
+                          <span className="text-slate-300 text-[10px] line-through font-semibold drop-shadow">
                             {priceOriginal}
                           </span>
                         )}
                         {pricePromo && (
                           <span
-                            className="text-xs font-bold text-white px-1.5 py-0.5 rounded shadow  tabular-nums"
+                            className="text-xs sm:text-sm font-black text-white px-2 py-0.5 rounded-lg shadow-lg"
                             style={{ backgroundColor: accentColor }}
                           >
                             {pricePromo}
+                          </span>
+                        )}
+                        {discountBadge && (
+                          <span className="text-[9px] font-extrabold bg-amber-400 text-slate-950 px-1.5 py-0.5 rounded shadow">
+                            {discountBadge}
                           </span>
                         )}
                       </div>
@@ -944,27 +1016,29 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
               </div>
             </div>
 
-            <div className="p-2.5 bg-[#0d131f] border border-[#25334a] rounded flex items-center justify-between">
-              <label className="text-xs text-slate-300 flex items-center gap-2 cursor-pointer">
+            <div className="p-3 bg-slate-800/80 border border-slate-700 rounded-2xl flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-200 flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={addToActivePlaylist}
                   onChange={(e) => setAddToActivePlaylist(e.target.checked)}
-                  className="rounded bg-[#151f32] border-[#2B354C] text-blue-600"
+                  className="rounded bg-slate-900 border-slate-700 text-blue-600"
                 />
-                Adicionar à TV imediatamente
+                <span>Transmitir na TV imediatamente</span>
               </label>
-              <span className="text-[10px] text-blue-400 font-semibold ">AO VIVO</span>
+              <span className="text-[10px] font-extrabold text-blue-400 bg-blue-500/15 px-2 py-0.5 rounded-full">
+                AO VIVO
+              </span>
             </div>
           </div>
         </div>
 
         {/* Modal Footer */}
-        <div className="px-5 py-3 border-t border-[#25334a] bg-[#0d131f] flex items-center justify-between gap-2">
+        <div className="px-5 py-3.5 border-t border-slate-800 bg-slate-900/90 flex items-center justify-between gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-full text-xs font-medium text-slate-400 hover:text-white transition-colors cursor-pointer"
+            className="px-5 py-2.5 rounded-full text-xs font-semibold text-slate-400 hover:text-white transition-colors cursor-pointer"
           >
             Cancelar
           </button>
@@ -972,10 +1046,10 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
           <button
             type="button"
             onClick={handleSave}
-            className="flex items-center gap-1.5 px-5 py-2.5 bg-[#2dd4bf] hover:bg-[#20b8a4] text-[#042f2e] text-xs font-bold rounded-full transition-all cursor-pointer shadow-sm"
+            className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-full transition-all cursor-pointer shadow-lg shadow-blue-600/30 active:scale-95"
           >
-            <Check className="w-3.5 h-3.5" />
-            <span>{initialItem ? 'Salvar Alterações' : 'Publicar Slide'}</span>
+            <Check className="w-4 h-4" />
+            <span>{initialItem ? 'Salvar Alterações' : 'Publicar Slide na TV'}</span>
           </button>
         </div>
       </div>

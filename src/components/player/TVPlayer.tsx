@@ -287,7 +287,7 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
         {/* Top Standby Header */}
         <div className="w-full flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="font-extrabold tracking-tight text-white font-['Space_Grotesk'] text-lg">
+            <span className="font-extrabold tracking-tight text-white  text-lg">
               BM<span className="text-blue-500">CAST</span>
             </span>
             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
@@ -296,7 +296,7 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="text-sm font-bold text-white font-mono">{formattedTime}</div>
+            <div className="text-sm font-bold text-white ">{formattedTime}</div>
             <div className="text-xs text-slate-400">{weather.temp}°C {weather.city}</div>
           </div>
         </div>
@@ -306,7 +306,7 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
           <div className="w-12 h-12 rounded-2xl bg-blue-600/20 text-blue-400 border border-blue-500/30 flex items-center justify-center mx-auto">
             <Store className="w-6 h-6" />
           </div>
-          <h2 className="text-xl font-bold font-['Space_Grotesk'] text-white">
+          <h2 className="text-xl font-bold  text-white">
             {screen?.name || 'TV Conectada'}
           </h2>
           <p className="text-xs text-slate-400 leading-relaxed">
@@ -314,7 +314,7 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
           </p>
 
           <div className="pt-2">
-            <span className="text-[11px] font-mono text-slate-500">
+            <span className="text-[11px]  text-slate-500">
               Código de Pareamento: <strong className="text-blue-400">{screen?.pairingCode || 'TV-1001'}</strong>
             </span>
           </div>
@@ -323,7 +323,7 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
             <div className="pt-2">
               <button
                 onClick={onExit}
-                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
+                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-full transition-all cursor-pointer"
               >
                 Voltar ao Painel Administrativo
               </button>
@@ -332,7 +332,7 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
         </div>
 
         {/* Bottom footer */}
-        <div className="text-xs text-slate-500 font-mono">
+        <div className="text-xs text-slate-500 ">
           BM Cast Pro • Transmissão Digital Indoor
         </div>
       </div>
@@ -410,7 +410,7 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
             }`}
           >
             <div
-              className="flex items-center gap-3 px-3.5 py-2 rounded-lg bg-black/85 border shadow-md"
+              className="flex items-center gap-3 px-3.5 py-2 rounded-2xl bg-black/85 border shadow-md"
               style={{
                 borderColor: `${brandAccent}60`,
               }}
@@ -430,7 +430,7 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
                 </div>
               )}
               <div>
-                <h1 className="text-sm sm:text-base font-bold text-white font-['Space_Grotesk'] tracking-wide uppercase leading-tight drop-shadow">
+                <h1 className="text-sm sm:text-base font-bold text-white  tracking-wide uppercase leading-tight drop-shadow">
                   {brandName}
                 </h1>
                 {brandSlogan && (
@@ -448,20 +448,20 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
         {/* WEATHER & CLOCK WIDGET (Top Corner) */}
         <div className="order-3 flex items-center gap-2">
           {/* REAL WEATHER API WIDGET */}
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/85 border border-slate-800 shadow-md text-white">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-black/85 border border-slate-800 shadow-md text-white">
             <div className="text-blue-400">
               {renderWeatherIcon()}
             </div>
             <div>
               <div className="flex items-baseline gap-1.5 leading-none">
-                <span className="text-base sm:text-lg font-bold font-mono tracking-tight tabular-nums">
+                <span className="text-base sm:text-lg font-bold  tracking-tight tabular-nums">
                   {weather.temp}°C
                 </span>
                 <span className="text-xs text-slate-300 truncate max-w-[100px]">
                   {weather.city}
                 </span>
               </div>
-              <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mt-0.5 font-mono">
+              <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mt-0.5 ">
                 <span>{weather.conditionText}</span>
                 <span aria-hidden="true">·</span>
                 <span className="tabular-nums">{weather.humidity}% umid</span>
@@ -470,8 +470,8 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
           </div>
 
           {/* REAL DIGITAL CLOCK */}
-          <div className="px-3 py-2 rounded-lg bg-black/85 border border-slate-800 shadow-md text-right">
-            <div className="text-base sm:text-lg font-bold text-white font-mono tracking-tight leading-none tabular-nums">
+          <div className="px-3 py-2 rounded-2xl bg-black/85 border border-slate-800 shadow-md text-right">
+            <div className="text-base sm:text-lg font-bold text-white  tracking-tight leading-none tabular-nums">
               {formattedTime}
             </div>
             <div className="text-[10px] text-slate-400 capitalize mt-0.5 tracking-wide">
@@ -625,7 +625,7 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
 
           <button
             onClick={handlePrevSlide}
-            className="p-2 rounded-lg hover:bg-[#1E253B] transition-colors cursor-pointer text-slate-300 hover:text-white"
+            className="p-2 rounded-full hover:bg-[#1E253B] transition-colors cursor-pointer text-slate-300 hover:text-white"
             title="Slide Anterior (Seta Esquerda)"
           >
             <SkipBack className="w-4 h-4" />
@@ -633,7 +633,7 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
 
           <button
             onClick={() => setIsPlaying((p) => !p)}
-            className="p-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors cursor-pointer"
+            className="p-2 rounded-full bg-blue-600 hover:bg-blue-500 text-white transition-colors cursor-pointer"
             title="Pausar / Reproduzir (Espaço)"
           >
             {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
@@ -641,7 +641,7 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
 
           <button
             onClick={handleNextSlide}
-            className="p-2 rounded-lg hover:bg-[#1E253B] transition-colors cursor-pointer text-slate-300 hover:text-white"
+            className="p-2 rounded-full hover:bg-[#1E253B] transition-colors cursor-pointer text-slate-300 hover:text-white"
             title="Próximo Slide (Seta Direita)"
           >
             <SkipForward className="w-4 h-4" />
@@ -649,7 +649,7 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
 
           <div className="h-4 w-px bg-[#262F48] mx-1" />
 
-          <span className="font-mono text-slate-300 px-1 font-semibold">
+          <span className=" text-slate-300 px-1 font-semibold">
             {currentIndex + 1} / {activeItems.length}
           </span>
 
@@ -657,7 +657,7 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
 
           <button
             onClick={toggleFullscreen}
-            className="p-2 rounded-lg hover:bg-[#1E253B] transition-colors cursor-pointer text-slate-300 hover:text-white"
+            className="p-2 rounded-full hover:bg-[#1E253B] transition-colors cursor-pointer text-slate-300 hover:text-white"
             title="Tela Cheia (F)"
           >
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}

@@ -35,9 +35,9 @@ export const Logo: React.FC<LogoProps> = ({
 
   return (
     <div className={`flex items-center gap-3 select-none ${className}`}>
-      {/* Formal Corporate Broadcast Insignia - Clean TV/Display Geometry, No green ball */}
+      {/* Formal Corporate Broadcast Insignia - Electric Blue & White, No green ball */}
       <div
-        className={`grid shrink-0 place-items-center bg-gradient-to-br from-[#1e293b] to-[#0f172a] text-[#2dd4bf] border border-[#334155] shadow-sm ${iconDimensions[size]}`}
+        className={`grid shrink-0 place-items-center bg-gradient-to-br from-[#1e293b] to-[#0f172a] text-blue-400 border border-blue-500/30 shadow-sm ${iconDimensions[size]}`}
       >
         <svg
           viewBox="0 0 24 24"
@@ -50,25 +50,25 @@ export const Logo: React.FC<LogoProps> = ({
           aria-hidden="true"
         >
           {/* Professional Display Frame with Broadcast Wave */}
-          <rect x="2" y="3" width="20" height="14" rx="2" />
-          <line x1="8" y1="21" x2="16" y2="21" />
-          <line x1="12" y1="17" x2="12" y2="21" />
-          <path d="M7 10l3-3 4 5 3-3" stroke="#2dd4bf" strokeWidth="1.8" />
+          <rect x="2" y="3" width="20" height="14" rx="2" className="text-white stroke-current" />
+          <line x1="8" y1="21" x2="16" y2="21" className="text-blue-400 stroke-current" />
+          <line x1="12" y1="17" x2="12" y2="21" className="text-blue-400 stroke-current" />
+          <path d="M7 10l3-3 4 5 3-3" stroke="#3b82f6" strokeWidth="2" />
         </svg>
       </div>
 
       {shouldShowText && (
         <div className="flex min-w-0 flex-col justify-center leading-none">
           <div className="flex items-center gap-1.5">
-            <span className={`font-bold tracking-tight text-white ${titleSizes[size]}`}>
+            <span className={`font-extrabold tracking-tight text-white ${titleSizes[size]}`}>
               BM CAST
             </span>
-            <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-[#2dd4bf] text-[#042f2e] tracking-wider uppercase">
+            <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-blue-600 text-white tracking-wider uppercase shadow-sm">
               PRO
             </span>
           </div>
           {showSubtitle && (
-            <span className={`font-medium text-slate-400 mt-1 tracking-wider uppercase ${subSizes[size]}`}>
+            <span className={`font-semibold text-slate-400 mt-1 tracking-wider uppercase ${subSizes[size]}`}>
               Sinalização Digital
             </span>
           )}

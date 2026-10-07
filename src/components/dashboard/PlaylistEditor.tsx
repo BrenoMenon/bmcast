@@ -19,21 +19,17 @@ interface PlaylistEditorProps {
   playlist: Playlist;
   mediaList: MediaItem[];
   onUpdatePlaylist: (updated: Playlist) => void;
-  onEditSlide: (media: MediaItem) => void;
+  onEditSlide: (item: MediaItem) => void;
   onDuplicateSlide: (playlistId: string, itemId: string) => void;
   onCreateNewSlide: () => void;
   onLaunchPlayer: () => void;
 }
 
 const CATEGORY_LABELS: Record<SlideCategoryType, string> = {
-  cardapio: 'Cardápio / Gastronomia',
-  promocao: 'Oferta / Promoção',
-  institucional: 'Institucional / Marca',
-  informativo: 'Informativo',
-  horarios: 'Horários de Funcionamento',
-  redes_sociais: 'Siga nas Redes',
-  wifi: 'Wi-Fi para Clientes',
-  personalizado: 'Personalizado',
+  cardapio: 'Cardápio',
+  promo: 'Promoção',
+  aviso: 'Informativo',
+  mural: 'Mural de Fotos',
 };
 
 export const PlaylistEditor: React.FC<PlaylistEditorProps> = ({
@@ -46,7 +42,7 @@ export const PlaylistEditor: React.FC<PlaylistEditorProps> = ({
   onLaunchPlayer,
 }) => {
   const totalDurationSeconds = playlist.items.reduce(
-    (acc, curr) => acc + (curr.durationSeconds || 10),
+    (acc, cur) => acc + (cur.durationSeconds || 12),
     0
   );
 
@@ -84,10 +80,10 @@ export const PlaylistEditor: React.FC<PlaylistEditorProps> = ({
   return (
     <div className="space-y-4">
       {/* Action Subheader */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#25334a]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-700/80">
         <div>
           <h2 className="text-sm font-bold text-white tracking-tight uppercase">
-            Grade de Transmissão (Playlist)
+            Grade de Transmissão Ativa na TV
           </h2>
           <div className="text-xs text-slate-400 flex items-center gap-2 mt-1">
             <span>{playlist.items.length} slides</span>
@@ -104,17 +100,17 @@ export const PlaylistEditor: React.FC<PlaylistEditorProps> = ({
         <div className="flex items-center gap-2.5">
           <button
             onClick={onCreateNewSlide}
-            className="flex items-center gap-1.5 px-4 py-2 bg-[#2dd4bf] hover:bg-[#20b8a4] active:scale-95 text-[#042f2e] text-xs font-bold rounded-full transition-all cursor-pointer shadow-sm"
+            className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white text-xs font-bold rounded-full transition-all cursor-pointer shadow-md"
           >
             <Plus className="w-4 h-4" />
-            <span>Adicionar à Grade</span>
+            <span>Adicionar Slide</span>
           </button>
           <button
             onClick={onLaunchPlayer}
-            className="flex items-center gap-1.5 px-4 py-2 bg-[#1e293b] hover:bg-[#27364d] border border-[#2d3d57] text-slate-200 hover:text-white text-xs font-semibold rounded-full transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white text-xs font-semibold rounded-full transition-all cursor-pointer"
           >
-            <Tv className="w-4 h-4 text-[#2dd4bf]" />
-            <span>Iniciar Transmissão</span>
+            <Tv className="w-4 h-4 text-blue-400" />
+            <span>Ver na TV</span>
           </button>
         </div>
       </div>
@@ -122,17 +118,17 @@ export const PlaylistEditor: React.FC<PlaylistEditorProps> = ({
       {/* Playlist Items */}
       <div className="space-y-3">
         {playlist.items.length === 0 ? (
-          <div className="p-10 text-center bg-[#151f32] border border-dashed border-[#25334a] rounded-3xl">
-            <div className="w-12 h-12 rounded-2xl bg-[#0d131f] border border-[#25334a] text-[#2dd4bf] flex items-center justify-center mx-auto mb-3">
+          <div className="p-10 text-center bg-slate-800/40 border border-dashed border-slate-700 rounded-3xl">
+            <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-700 text-blue-400 flex items-center justify-center mx-auto mb-3 shadow-inner">
               <Tv className="w-6 h-6" />
             </div>
             <h3 className="text-sm font-bold text-white">Nenhum slide programado</h3>
             <p className="text-xs text-slate-400 max-w-sm mx-auto mt-1 mb-4 leading-relaxed">
-              Crie seu primeiro slide com foto, categoria, personalização da marca e QR Code.
+              Crie seu primeiro slide com foto, categoria, personalização da marca e QR Code para começar.
             </p>
             <button
               onClick={onCreateNewSlide}
-              className="px-5 py-2.5 bg-[#2dd4bf] hover:bg-[#20b8a4] text-[#042f2e] text-xs font-bold rounded-full transition-all cursor-pointer shadow-md"
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-full transition-all cursor-pointer shadow-md"
             >
               Criar Primeiro Slide
             </button>
@@ -150,7 +146,7 @@ export const PlaylistEditor: React.FC<PlaylistEditorProps> = ({
             return (
               <div
                 key={item.id}
-                className="bg-[#151f32] border border-[#25334a] rounded-2xl p-3.5 sm:p-4 transition-all hover:border-[#384b6c] flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm"
+                className="bg-slate-800/70 border border-slate-700/80 rounded-2xl p-3.5 sm:p-4 transition-all hover:border-blue-500/40 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm"
               >
                 {/* Left: Reorder, Thumbnail, and Info */}
                 <div className="flex items-center gap-3.5 min-w-0">
@@ -162,7 +158,7 @@ export const PlaylistEditor: React.FC<PlaylistEditorProps> = ({
                       className="p-1 hover:text-white disabled:opacity-20 cursor-pointer transition-colors"
                       title="Mover para cima"
                     >
-                      <ChevronUp className="w-4 h-4" />
+                      <ChevronUp className="w-3.5 h-3.5" />
                     </button>
                     <span className="text-xs font-bold text-slate-300">
                       {index + 1}
@@ -173,12 +169,12 @@ export const PlaylistEditor: React.FC<PlaylistEditorProps> = ({
                       className="p-1 hover:text-white disabled:opacity-20 cursor-pointer transition-colors"
                       title="Mover para baixo"
                     >
-                      <ChevronDown className="w-4 h-4" />
+                      <ChevronDown className="w-3.5 h-3.5" />
                     </button>
                   </div>
 
                   {/* Thumbnail */}
-                  <div className="relative w-20 h-14 sm:w-24 sm:h-14 bg-black rounded-xl overflow-hidden shrink-0 border border-[#25334a]">
+                  <div className="relative w-20 h-14 sm:w-24 sm:h-14 bg-black rounded-xl overflow-hidden shrink-0 border border-slate-700">
                     {media?.url ? (
                       <img
                         src={media.thumbnail || media.url}
@@ -186,25 +182,39 @@ export const PlaylistEditor: React.FC<PlaylistEditorProps> = ({
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full bg-[#0d131f] flex items-center justify-center text-[10px] text-slate-500">
-                        Foto
+                      <div className="w-full h-full flex items-center justify-center bg-slate-900 text-slate-600 text-[10px]">
+                        Sem foto
                       </div>
                     )}
+                    <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded-full bg-black/80 text-[9px] font-bold text-white border border-white/10">
+                      {catLabel}
+                    </span>
                   </div>
 
-                  {/* Slide Title and Metadata */}
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-bold text-white text-xs sm:text-sm truncate">
-                      {item.customTitle || media?.title || 'Slide sem título'}
-                    </h3>
+                  {/* Titles & Meta */}
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="font-bold text-white text-xs sm:text-sm truncate">
+                        {item.customTitle || overlayCfg?.headline || media?.title || 'Slide Sem Título'}
+                      </h4>
 
-                    {/* Metadata with subtle dot separators */}
-                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px] text-slate-400 mt-1">
-                      <span className="text-slate-300 font-medium">{catLabel}</span>
+                      {overlayCfg?.badgeText && (
+                        <span
+                          className="px-2 py-0.5 rounded-full text-[9px] font-bold text-white tracking-wide uppercase"
+                          style={{ backgroundColor: overlayCfg.accentColor || '#2563EB' }}
+                        >
+                          {overlayCfg.badgeText}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1.5 text-[11px] text-slate-400 flex-wrap">
+                      <span>{item.durationSeconds || 12}s</span>
+
                       <span aria-hidden="true" className="text-slate-600">·</span>
 
                       {brandCfg?.showBrand ? (
-                        <span className="text-[#2dd4bf] font-medium">Marca: {brandCfg.brandName || 'Ativa'}</span>
+                        <span className="text-blue-400 font-medium">Marca: {brandCfg.brandName || 'Ativa'}</span>
                       ) : (
                         <span className="text-slate-500">Marca oculta</span>
                       )}
@@ -222,7 +232,7 @@ export const PlaylistEditor: React.FC<PlaylistEditorProps> = ({
                       {overlayCfg?.pricePromo && (
                         <>
                           <span aria-hidden="true" className="text-slate-600">·</span>
-                          <span className="text-amber-300 font-bold">{overlayCfg.pricePromo}</span>
+                          <span className="text-emerald-400 font-bold">{overlayCfg.pricePromo}</span>
                         </>
                       )}
                     </div>
@@ -230,9 +240,9 @@ export const PlaylistEditor: React.FC<PlaylistEditorProps> = ({
                 </div>
 
                 {/* Right: Duration & Actions */}
-                <div className="flex items-center justify-end gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-[#25334a]">
+                <div className="flex items-center justify-end gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-slate-700/80">
                   {/* Duration input */}
-                  <div className="flex items-center gap-1 bg-[#0d131f] px-3 py-1.5 rounded-full border border-[#25334a] text-xs text-slate-300">
+                  <div className="flex items-center gap-1 bg-slate-900 px-3 py-1.5 rounded-full border border-slate-700 text-xs text-slate-300">
                     <Clock className="w-3.5 h-3.5 text-slate-400" />
                     <input
                       type="number"
@@ -260,26 +270,26 @@ export const PlaylistEditor: React.FC<PlaylistEditorProps> = ({
                         });
                       }
                     }}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#1e293b] hover:bg-[#27364d] text-xs font-semibold text-slate-200 hover:text-white rounded-full border border-[#2d3d57] transition-colors cursor-pointer"
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white rounded-full border border-slate-700 transition-colors cursor-pointer"
                     title="Editar Marca, QR Code e Oferta"
                   >
-                    <Edit3 className="w-3.5 h-3.5 text-[#2dd4bf]" />
+                    <Edit3 className="w-3.5 h-3.5 text-blue-400" />
                     <span>Personalizar</span>
                   </button>
 
                   {/* Duplicar Slide */}
                   <button
                     onClick={() => onDuplicateSlide(playlist.id, item.id)}
-                    className="p-2 bg-[#1e293b] hover:bg-[#27364d] text-slate-300 hover:text-white rounded-full border border-[#2d3d57] transition-colors cursor-pointer"
+                    className="p-2 bg-slate-800 hover:bg-slate-700 text-white rounded-full border border-slate-700 transition-colors cursor-pointer"
                     title="Duplicar Slide como nova variação"
                   >
-                    <Copy className="w-3.5 h-3.5 text-[#2dd4bf]" />
+                    <Copy className="w-3.5 h-3.5 text-blue-400" />
                   </button>
 
                   {/* Remover da Playlist */}
                   <button
                     onClick={() => handleRemoveItem(item.id)}
-                    className="p-2 bg-[#1e293b] hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-full border border-[#2d3d57] hover:border-red-500/40 transition-colors cursor-pointer"
+                    className="p-2 bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-full border border-slate-700 hover:border-red-500/40 transition-colors cursor-pointer"
                     title="Remover"
                   >
                     <Trash2 className="w-3.5 h-3.5" />

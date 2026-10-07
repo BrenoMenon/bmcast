@@ -17,6 +17,8 @@ export interface AuthSession {
   token: string;
 }
 
+export type User = AuthSession['user'];
+
 const STORAGE_USERS_KEY = 'bmcast_registered_users_v3';
 const STORAGE_SESSION_KEY = 'bmcast_active_session_v3';
 

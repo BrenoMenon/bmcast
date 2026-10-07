@@ -5,6 +5,15 @@ export type TVLayoutMode = 'clean_media' | 'corporate_split' | 'menu_brand' | 'p
 
 export type SlideCategoryType = 'cardapio' | 'promo' | 'aviso' | 'mural';
 
+export type BusinessCategoryType =
+  | 'lanchonete'
+  | 'loja'
+  | 'clinica'
+  | 'barbearia'
+  | 'academia'
+  | 'corporativo'
+  | 'outro';
+
 export type QrCodePosition = 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left' | 'center-right';
 export type QrCodeSize = 'small' | 'medium' | 'large';
 export type BrandPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'header-bar';
@@ -15,10 +24,12 @@ export interface CategoryOverlayConfig {
   subheadline?: string;        // Ex: "Acompanha batata rústica e refrigerante lata"
   priceOriginal?: string;      // Ex: "R$ 44,90"
   pricePromo?: string;         // Ex: "R$ 29,90"
-  accentColor?: string;        // Ex: "#E11D48", "#2563EB", "#059669", "#D97706"
+  accentColor?: string;        // Ex: "#2563EB", "#059669", "#D97706", etc.
   showOverlayBadge?: boolean;  // Exibe a etiqueta de destaque
   showPriceTag?: boolean;      // Exibe a caixa de preços
   position?: 'bottom' | 'top' | 'left' | 'right';
+  overlayOpacity?: number;     // 0 a 100% de escurecimento do fundo
+  discountPercent?: string;    // Ex: "25% OFF"
   extraItems?: { label: string; value: string }[];
 }
 
@@ -132,18 +143,24 @@ export interface CompanyBrandProfile {
   slogan: string;
   logoUrl: string;
   accentColor: string;
+  primaryColor?: string;
   phoneWhatsApp?: string;
   instagramHandle?: string;
   websiteUrl?: string;
   defaultQrCodeImage?: string;
   defaultQrCodeUrl?: string;
+  businessCategory?: BusinessCategoryType;
+  onboardingCompleted?: boolean;
+  supabaseUrl?: string;
+  supabaseAnonKey?: string;
+  supabaseConnected?: boolean;
 }
 
 export interface SystemConfig {
   organizationName: string;
   brandProfile: CompanyBrandProfile;
   themeAccent: string;
-  themeMode: 'dark';
+  themeMode: 'dark' | 'light';
   defaultLayoutMode: TVLayoutMode;
   enableSplitMode: boolean;
 }

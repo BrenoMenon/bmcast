@@ -38,15 +38,15 @@ export default function App() {
         return;
       }
 
-      // 2. Check path: /play/[slug]
-      const playPathMatch = path.match(/\/play\/([^/?#]+)/);
+      // 2. Check path: /play/[slug] or /tv/[slug]
+      const playPathMatch = path.match(/\/(?:play|tv)\/([^/?#]+)/);
       if (playPathMatch && playPathMatch[1]) {
         setCurrentRoute({ view: 'player', slug: playPathMatch[1] });
         return;
       }
 
-      // 3. Check hash: #/play/[slug] or #screen=...
-      const hashMatch = hash.match(/#\/?play\/([^/?#]+)/);
+      // 3. Check hash: #/play/[slug], #/tv/[slug] or #screen=...
+      const hashMatch = hash.match(/#\/?(?:play|tv)\/([^/?#]+)/);
       if (hashMatch && hashMatch[1]) {
         setCurrentRoute({ view: 'player', slug: hashMatch[1] });
         return;

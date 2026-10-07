@@ -1,28 +1,55 @@
 @import "tailwindcss";
 
 @layer base {
-  :root {
-    --background: #0d131f;
+  :root,
+  html.dark {
+    --background: #0f172a;
     --foreground: #f8fafc;
-    --card: #151f32;
+    --card: #1e293b;
     --card-foreground: #f8fafc;
-    --popover: #151f32;
+    --popover: #1e293b;
     --popover-foreground: #f8fafc;
-    --primary: #2dd4bf;
-    --primary-foreground: #042f2e;
+    --primary: #3b82f6;
+    --primary-foreground: #ffffff;
     --secondary: #1e293b;
     --secondary-foreground: #f8fafc;
     --muted: #1e293b;
     --muted-foreground: #94a3b8;
-    --accent: #2dd4bf;
-    --accent-foreground: #042f2e;
+    --accent: #3b82f6;
+    --accent-foreground: #ffffff;
     --destructive: #ef4444;
     --destructive-foreground: #ffffff;
-    --border: #25334a;
-    --input: #111827;
-    --ring: #2dd4bf;
+    --border: #334155;
+    --input: #0f172a;
+    --ring: #3b82f6;
     --radius: 1rem;
-    --gradient-brand: linear-gradient(135deg, #2dd4bf 0%, #10b981 100%);
+    --gradient-brand: linear-gradient(135deg, #60a5fa 0%, #2563eb 100%);
+    color-scheme: dark;
+  }
+
+  html.light {
+    --background: #f8fafc;
+    --foreground: #0f172a;
+    --card: #ffffff;
+    --card-foreground: #0f172a;
+    --popover: #ffffff;
+    --popover-foreground: #0f172a;
+    --primary: #2563eb;
+    --primary-foreground: #ffffff;
+    --secondary: #f1f5f9;
+    --secondary-foreground: #0f172a;
+    --muted: #f1f5f9;
+    --muted-foreground: #64748b;
+    --accent: #2563eb;
+    --accent-foreground: #ffffff;
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+    --border: #e2e8f0;
+    --input: #ffffff;
+    --ring: #2563eb;
+    --radius: 1rem;
+    --gradient-brand: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    color-scheme: light;
   }
 
   * {
@@ -38,6 +65,7 @@
     margin: 0;
     padding: 0;
     overflow-x: hidden;
+    transition: background-color 0.25s ease, color 0.25s ease;
   }
 
   input, select, textarea, button {
@@ -45,26 +73,26 @@
   }
 }
 
-/* BL Core Button Styles - Rounded & Tactile */
+/* Rounded Blue & White Button Utilities */
 .btn-rounded-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
   border-radius: 9999px;
-  background-color: #2dd4bf;
-  color: #042f2e;
-  font-weight: 600;
+  background-color: #2563eb;
+  color: #ffffff;
+  font-weight: 700;
   font-size: 0.875rem;
-  padding: 0.625rem 1.25rem;
+  padding: 0.625rem 1.35rem;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 14px -2px rgba(45, 212, 191, 0.35);
+  box-shadow: 0 4px 14px -2px rgba(37, 99, 235, 0.4);
   cursor: pointer;
 }
 
 .btn-rounded-primary:hover {
-  background-color: #20b8a4;
-  box-shadow: 0 6px 20px -2px rgba(45, 212, 191, 0.45);
+  background-color: #1d4ed8;
+  box-shadow: 0 6px 20px -2px rgba(37, 99, 235, 0.55);
 }
 
 .btn-rounded-primary:active {
@@ -77,26 +105,26 @@
   justify-content: center;
   gap: 0.5rem;
   border-radius: 9999px;
-  background-color: #1e293b;
-  border: 1px solid #2d3d57;
-  color: #f1f5f9;
-  font-weight: 500;
+  background-color: var(--secondary);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  font-weight: 600;
   font-size: 0.875rem;
-  padding: 0.5rem 1.125rem;
+  padding: 0.5rem 1.15rem;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
 }
 
 .btn-rounded-secondary:hover {
-  background-color: #27364d;
-  border-color: #3b4e6d;
+  opacity: 0.9;
+  border-color: #3b82f6;
 }
 
 .btn-rounded-secondary:active {
   transform: scale(0.97);
 }
 
-/* BL Core Signature Gradient Text */
+/* Gradient text */
 .bl-gradient-text {
   background: var(--gradient-brand);
   color: transparent;
@@ -137,12 +165,16 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #25334a;
+  background: #334155;
   border-radius: 9999px;
 }
 
+html.light ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+
 ::-webkit-scrollbar-thumb:hover {
-  background: #3b4e6d;
+  background: #3b82f6;
 }
 
 /* TV Player Overlay text shadow */

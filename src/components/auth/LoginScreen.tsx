@@ -10,33 +10,35 @@ import {
   ArrowLeft,
   AlertCircle,
   CheckCircle2,
-  ShieldCheck,
   Tv,
   CloudSun,
   QrCode,
-  Radio,
+  ShieldCheck,
+  Sparkles,
 } from 'lucide-react';
 import { Logo } from '../common/Logo';
-import { authService } from '../../services/authService';
+import { authService, User as AuthUser } from '../../services/authService';
 
 interface LoginScreenProps {
-  onSuccess: (user: { id: string; name: string; email: string }) => void;
+  onSuccess: (user: AuthUser) => void;
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
   const [mode, setMode] = useState<'signin' | 'signup' | 'recovery'>('signin');
 
-  // Form Fields
-  const [name, setName] = useState('');
+  // Common inputs
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  // Recovery Key Fields
-  const [securityQuestion, setSecurityQuestion] = useState('');
+  // Sign up specific inputs
+  const [name, setName] = useState('');
+  const [securityQuestion, setSecurityQuestion] = useState(
+    'Qual foi o nome do seu primeiro animal de estimação?'
+  );
   const [securityAnswer, setSecurityAnswer] = useState('');
 
-  // Password Reset Fields
+  // Password Recovery specific inputs
   const [recoveryEmail, setRecoveryEmail] = useState('');
   const [detectedQuestion, setDetectedQuestion] = useState<string | null>(null);
   const [recoveryAnswerInput, setRecoveryAnswerInput] = useState('');
@@ -44,10 +46,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
 
-  // Feedback states
+  // Status feedback
+  const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
 
   const handleSignIn = (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,7 +63,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
     if (res.success && res.user) {
       onSuccess(res.user);
     } else {
-      setErrorMsg(res.error || 'Credenciais inválidas. Verifique seu e-mail e senha.');
+      setErrorMsg(res.error || 'Credenciais inválidas.');
     }
   };
 
@@ -81,7 +83,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
     setLoading(false);
 
     if (res.success && res.user) {
-      onSuccess(res.user);
+      setSuccessMsg('🎉 Conta criada com sucesso! Seja bem-vindo à BM Cast. Redirecionando...');
+      setTimeout(() => {
+        onSuccess(res.user!);
+      }, 1500);
     } else {
       setErrorMsg(res.error || 'Erro ao registrar conta.');
     }
@@ -122,32 +127,32 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
     setLoading(false);
 
     if (res.success) {
-      setSuccessMsg('Senha atualizada com sucesso.');
+      setSuccessMsg('Senha atualizada com sucesso! Conectando...');
       setTimeout(() => {
         const u = authService.getCurrentUser();
         if (u) onSuccess(u);
-      }, 700);
+      }, 900);
     } else {
       setErrorMsg(res.error || 'Não foi possível redefinir sua senha.');
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#0d131f] text-slate-100 flex flex-col justify-between font-['Plus_Jakarta_Sans',sans-serif]">
+    <div className="min-h-screen bg-[#0b0f19] text-white flex flex-col justify-between font-sans">
       <div className="grid min-h-screen lg:grid-cols-2">
-        {/* LEFT COLUMN: HERO ASIDE (Exact BL Core Style) */}
-        <aside className="relative hidden overflow-hidden lg:flex lg:flex-col lg:justify-between lg:p-12 xl:p-16 text-white">
+        {/* LEFT COLUMN: HERO ASIDE (Blue, White, Executive) */}
+        <aside className="relative hidden overflow-hidden lg:flex lg:flex-col lg:justify-between lg:p-12 xl:p-16 text-white bg-[#0f172a]">
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
               background:
-                'radial-gradient(ellipse at top left, rgba(16, 185, 129, 0.25) 0%, rgba(6, 78, 59, 0.4) 40%, rgba(13, 19, 31, 1) 90%)',
+                'radial-gradient(ellipse at top left, rgba(37, 99, 235, 0.28) 0%, rgba(30, 58, 138, 0.35) 45%, rgba(11, 15, 25, 1) 90%)',
             }}
           />
 
-          {/* Decorative glowing sphere */}
-          <div className="pointer-events-none absolute -left-20 top-1/4 h-80 w-80 rounded-full bg-emerald-500/15 blur-3xl" />
-          <div className="pointer-events-none absolute right-10 bottom-1/4 h-72 w-72 rounded-full bg-teal-400/10 blur-3xl" />
+          {/* Decorative glowing spheres */}
+          <div className="pointer-events-none absolute -left-20 top-1/4 h-80 w-80 rounded-full bg-blue-600/15 blur-3xl" />
+          <div className="pointer-events-none absolute right-10 bottom-1/4 h-72 w-72 rounded-full bg-sky-500/15 blur-3xl" />
 
           {/* Top Brand Logo */}
           <div className="relative z-10">
@@ -156,13 +161,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
 
           {/* Center Pitch Content */}
           <div className="relative z-10 max-w-lg space-y-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs font-semibold text-[#2dd4bf]">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-500/15 border border-blue-500/30 text-xs font-bold text-blue-300">
               <Tv className="w-3.5 h-3.5" />
               <span>Sinalização Digital & TV Corporativa</span>
             </div>
 
             <h2 className="text-3xl xl:text-4xl font-extrabold tracking-tight leading-tight text-white">
-              Transforme telas comuns em <span className="bl-gradient-text">canais de alta conversão</span>
+              Transforme telas comuns em <span className="text-blue-400">canais de alta conversão</span>
             </h2>
 
             <p className="text-slate-300 text-sm leading-relaxed">
@@ -170,33 +175,33 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
             </p>
 
             <div className="grid grid-cols-2 gap-3.5 pt-2">
-              <div className="p-3.5 rounded-2xl bg-[#151f32]/80 border border-[#25334a] backdrop-blur-md space-y-1">
-                <div className="flex items-center gap-2 text-[#2dd4bf] font-bold text-xs">
+              <div className="p-4 rounded-2xl bg-[#131c2e]/90 border border-[#222f46] backdrop-blur-md space-y-1.5">
+                <div className="flex items-center gap-2 text-blue-400 font-bold text-xs">
                   <CloudSun className="w-4 h-4" />
                   <span>Clima ao Vivo</span>
                 </div>
-                <p className="text-[11px] text-slate-400">Dados oficiais atualizados automaticamente na TV.</p>
+                <p className="text-[11px] text-slate-400">Dados oficiais da API atualizados na TV em tempo real.</p>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-[#151f32]/80 border border-[#25334a] backdrop-blur-md space-y-1">
-                <div className="flex items-center gap-2 text-[#2dd4bf] font-bold text-xs">
+              <div className="p-4 rounded-2xl bg-[#131c2e]/90 border border-[#222f46] backdrop-blur-md space-y-1.5">
+                <div className="flex items-center gap-2 text-blue-400 font-bold text-xs">
                   <QrCode className="w-4 h-4" />
                   <span>QR Code & Marca</span>
                 </div>
-                <p className="text-[11px] text-slate-400">Personalize marca e QR code em cada slide.</p>
+                <p className="text-[11px] text-slate-400">Personalize logo, cores e QR Code em cada slide.</p>
               </div>
             </div>
           </div>
 
           {/* Bottom Security Assurance */}
           <div className="relative z-10 flex items-center gap-2 text-xs text-slate-400">
-            <ShieldCheck className="w-4 h-4 text-[#2dd4bf]" />
-            <span>Plataforma protegida e preparada para transmissão 24/7.</span>
+            <ShieldCheck className="w-4 h-4 text-blue-400" />
+            <span>Plataforma protegida e preparada para transmissão contínua 24/7.</span>
           </div>
         </aside>
 
-        {/* RIGHT COLUMN: LOGIN FORM CONTAINER (Exact BL Core Style) */}
-        <div className="relative flex items-center justify-center px-4 py-10 sm:px-8 lg:px-12">
+        {/* RIGHT COLUMN: LOGIN FORM CONTAINER */}
+        <div className="relative flex items-center justify-center px-4 py-10 sm:px-8 lg:px-12 bg-[#0b0f19]">
           <div className="w-full max-w-md">
             {/* Mobile Header Logo */}
             <div className="mb-6 flex flex-col items-center gap-3 lg:hidden">
@@ -204,7 +209,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
             </div>
 
             {/* Rounded Card */}
-            <div className="rounded-3xl border border-[#25334a] bg-[#151f32] p-6 sm:p-8 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.65)]">
+            <div className="rounded-3xl border border-[#222f46] bg-[#131c2e] p-6 sm:p-8 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)]">
               <div className="mb-6">
                 <h1 className="text-2xl font-bold tracking-tight sm:text-3xl text-white">
                   {mode === 'signin' && 'Bem-vindo de volta'}
@@ -219,7 +224,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
               </div>
 
               {/* Segmented Rounded Pill Tabs */}
-              <div className="grid w-full grid-cols-2 bg-[#0d131f] p-1.5 rounded-full border border-[#25334a] mb-6">
+              <div className="grid w-full grid-cols-2 bg-[#0b101b] p-1.5 rounded-full border border-[#222f46] mb-6">
                 <button
                   type="button"
                   onClick={() => {
@@ -229,7 +234,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
                   }}
                   className={`py-2.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${
                     mode === 'signin'
-                      ? 'bg-[#2dd4bf] text-[#042f2e] shadow-md font-bold'
+                      ? 'bg-blue-600 text-white shadow-md font-bold'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
@@ -244,7 +249,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
                   }}
                   className={`py-2.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${
                     mode === 'signup'
-                      ? 'bg-[#2dd4bf] text-[#042f2e] shadow-md font-bold'
+                      ? 'bg-blue-600 text-white shadow-md font-bold'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
@@ -261,9 +266,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
               )}
 
               {successMsg && (
-                <div className="p-3.5 mb-5 rounded-2xl bg-emerald-950/40 border border-emerald-900/60 text-xs text-emerald-200 flex items-start gap-2.5">
-                  <CheckCircle2 className="w-4 h-4 text-[#2dd4bf] shrink-0 mt-0.5" />
-                  <span>{successMsg}</span>
+                <div className="p-4 mb-5 rounded-2xl bg-blue-950/50 border border-blue-500/40 text-xs text-blue-100 flex items-start gap-3 animate-in fade-in">
+                  <CheckCircle2 className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <span className="font-semibold text-white block">Status da Ação:</span>
+                    <span className="leading-relaxed">{successMsg}</span>
+                  </div>
                 </div>
               )}
 
@@ -282,7 +290,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="nome@empresa.com"
-                        className="w-full pl-10 pr-4 py-3 bg-[#0d131f] border border-[#25334a] rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#2dd4bf] focus:ring-2 focus:ring-[#2dd4bf]/25 transition-all"
+                        className="w-full pl-10 pr-4 py-3 bg-[#0b101b] border border-[#222f46] rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/25 transition-all"
                       />
                     </div>
                   </div>
@@ -304,7 +312,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
                             if (q) setDetectedQuestion(q);
                           }
                         }}
-                        className="text-xs text-[#2dd4bf] hover:underline cursor-pointer"
+                        className="text-xs text-blue-400 hover:underline cursor-pointer"
                       >
                         Esqueceu a senha?
                       </button>
@@ -317,7 +325,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="••••••••"
-                        className="w-full pl-10 pr-11 py-3 bg-[#0d131f] border border-[#25334a] rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#2dd4bf] focus:ring-2 focus:ring-[#2dd4bf]/25 transition-all"
+                        className="w-full pl-10 pr-11 py-3 bg-[#0b101b] border border-[#222f46] rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/25 transition-all"
                       />
                       <button
                         type="button"
@@ -332,7 +340,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-3.5 px-6 bg-[#2dd4bf] hover:bg-[#20b8a4] active:scale-[0.98] text-[#042f2e] font-bold text-sm rounded-full transition-all shadow-md cursor-pointer mt-2 disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full py-3.5 px-6 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-bold text-sm rounded-full transition-all shadow-md cursor-pointer mt-2 disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     <span>{loading ? 'Entrando...' : 'Entrar na Plataforma'}</span>
                     <ArrowRight className="w-4 h-4" />
@@ -355,7 +363,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Ex: Pontes Lanches & Burger"
-                        className="w-full pl-10 pr-4 py-3 bg-[#0d131f] border border-[#25334a] rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#2dd4bf] focus:ring-2 focus:ring-[#2dd4bf]/25 transition-all"
+                        className="w-full pl-10 pr-4 py-3 bg-[#0b101b] border border-[#222f46] rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/25 transition-all"
                       />
                     </div>
                   </div>
@@ -372,7 +380,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="contato@empresa.com"
-                        className="w-full pl-10 pr-4 py-3 bg-[#0d131f] border border-[#25334a] rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#2dd4bf] focus:ring-2 focus:ring-[#2dd4bf]/25 transition-all"
+                        className="w-full pl-10 pr-4 py-3 bg-[#0b101b] border border-[#222f46] rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/25 transition-all"
                       />
                     </div>
                   </div>
@@ -390,7 +398,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="••••••••"
-                        className="w-full pl-10 pr-11 py-3 bg-[#0d131f] border border-[#25334a] rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#2dd4bf] focus:ring-2 focus:ring-[#2dd4bf]/25 transition-all"
+                        className="w-full pl-10 pr-11 py-3 bg-[#0b101b] border border-[#222f46] rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/25 transition-all"
                       />
                       <button
                         type="button"
@@ -403,9 +411,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
                   </div>
 
                   {/* Pergunta de Recuperação */}
-                  <div className="p-4 rounded-2xl bg-[#0d131f] border border-[#25334a] space-y-3">
+                  <div className="p-4 rounded-2xl bg-[#0b101b] border border-[#222f46] space-y-3">
                     <div className="flex items-center gap-1.5 text-xs font-bold text-white">
-                      <KeyRound className="w-4 h-4 text-[#2dd4bf]" />
+                      <KeyRound className="w-4 h-4 text-blue-400" />
                       <span>Chave de Recuperação de Senha</span>
                     </div>
 
@@ -419,7 +427,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
                         value={securityQuestion}
                         onChange={(e) => setSecurityQuestion(e.target.value)}
                         placeholder="Ex: Qual foi o meu primeiro carro?"
-                        className="w-full px-3.5 py-2.5 bg-[#151f32] border border-[#25334a] rounded-xl text-xs text-white focus:outline-none focus:border-[#2dd4bf]"
+                        className="w-full px-3.5 py-2.5 bg-[#131c2e] border border-[#222f46] rounded-xl text-xs text-white focus:outline-none focus:border-blue-500"
                       />
                     </div>
 
@@ -433,7 +441,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
                         value={securityAnswer}
                         onChange={(e) => setSecurityAnswer(e.target.value)}
                         placeholder="Digite a resposta correta"
-                        className="w-full px-3.5 py-2.5 bg-[#151f32] border border-[#25334a] rounded-xl text-xs text-white focus:outline-none focus:border-[#2dd4bf]"
+                        className="w-full px-3.5 py-2.5 bg-[#131c2e] border border-[#222f46] rounded-xl text-xs text-white focus:outline-none focus:border-blue-500"
                       />
                     </div>
                   </div>
@@ -441,7 +449,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-3.5 px-6 bg-[#2dd4bf] hover:bg-[#20b8a4] active:scale-[0.98] text-[#042f2e] font-bold text-sm rounded-full transition-all shadow-md cursor-pointer mt-2 disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full py-3.5 px-6 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-bold text-sm rounded-full transition-all shadow-md cursor-pointer mt-2 disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     <span>{loading ? 'Cadastrando...' : 'Cadastrar e Iniciar'}</span>
                     <ArrowRight className="w-4 h-4" />
@@ -463,12 +471,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
                         value={recoveryEmail}
                         onChange={(e) => setRecoveryEmail(e.target.value)}
                         placeholder="seuemail@empresa.com"
-                        className="flex-1 px-3.5 py-3 bg-[#0d131f] border border-[#25334a] rounded-xl text-sm text-white focus:outline-none focus:border-[#2dd4bf]"
+                        className="flex-1 px-3.5 py-3 bg-[#0b101b] border border-[#222f46] rounded-xl text-sm text-white focus:outline-none focus:border-blue-500"
                       />
                       <button
                         type="button"
                         onClick={handleCheckEmailForRecovery}
-                        className="px-5 py-3 bg-[#1e293b] hover:bg-[#28384f] text-xs font-bold text-white rounded-full transition-colors cursor-pointer border border-[#2d3d57]"
+                        className="px-5 py-3 bg-[#1a253a] hover:bg-[#22324f] text-xs font-bold text-white rounded-full transition-colors cursor-pointer border border-[#283957]"
                       >
                         Buscar
                       </button>
@@ -476,11 +484,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
                   </div>
 
                   {detectedQuestion && (
-                    <div className="p-4 rounded-2xl bg-[#0d131f] border border-[#25334a] space-y-3">
+                    <div className="p-4 rounded-2xl bg-[#0b101b] border border-[#222f46] space-y-3">
                       <div className="text-xs text-slate-400 font-semibold">
                         Sua Pergunta Secreta:
                       </div>
-                      <div className="p-3 rounded-xl bg-[#151f32] border border-[#25334a] text-xs font-bold text-white">
+                      <div className="p-3 rounded-xl bg-[#131c2e] border border-[#222f46] text-xs font-bold text-white">
                         {detectedQuestion}
                       </div>
 
@@ -494,7 +502,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
                           value={recoveryAnswerInput}
                           onChange={(e) => setRecoveryAnswerInput(e.target.value)}
                           placeholder="Digite a resposta"
-                          className="w-full px-3.5 py-2.5 bg-[#151f32] border border-[#25334a] rounded-xl text-xs text-white focus:outline-none focus:border-[#2dd4bf]"
+                          className="w-full px-3.5 py-2.5 bg-[#131c2e] border border-[#222f46] rounded-xl text-xs text-white focus:outline-none focus:border-blue-500"
                         />
                       </div>
 
@@ -510,7 +518,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
                             value={newPassword}
                             onChange={(e) => setNewPassword(e.target.value)}
                             placeholder="Mínimo 6 caracteres"
-                            className="w-full px-3.5 pr-10 py-2.5 bg-[#151f32] border border-[#25334a] rounded-xl text-xs text-white focus:outline-none focus:border-[#2dd4bf]"
+                            className="w-full px-3.5 pr-10 py-2.5 bg-[#131c2e] border border-[#222f46] rounded-xl text-xs text-white focus:outline-none focus:border-blue-500"
                           />
                           <button
                             type="button"
@@ -532,14 +540,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
                           value={confirmPassword}
                           onChange={(e) => setConfirmPassword(e.target.value)}
                           placeholder="Repita a nova senha"
-                          className="w-full px-3.5 py-2.5 bg-[#151f32] border border-[#25334a] rounded-xl text-xs text-white focus:outline-none focus:border-[#2dd4bf]"
+                          className="w-full px-3.5 py-2.5 bg-[#131c2e] border border-[#222f46] rounded-xl text-xs text-white focus:outline-none focus:border-blue-500"
                         />
                       </div>
 
                       <button
                         type="submit"
                         disabled={loading}
-                        className="w-full py-3.5 bg-[#2dd4bf] hover:bg-[#20b8a4] text-[#042f2e] font-bold text-xs rounded-full transition-all shadow-md cursor-pointer"
+                        className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-full transition-all shadow-md cursor-pointer"
                       >
                         Redefinir Senha
                       </button>
@@ -566,14 +574,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
 
             {/* Bottom Security Note */}
             <p className="mt-6 flex items-center justify-center gap-2 text-center text-xs text-slate-400">
-              <ShieldCheck className="h-4 w-4 text-[#2dd4bf]" />
+              <ShieldCheck className="h-4 w-4 text-blue-400" />
               <span>Seus dados totalmente protegidos.</span>
             </p>
 
             {/* FOOTER WITH COPYRIGHT FIRST */}
             <footer className="mt-4 border-0 px-4 py-4 text-center text-xs text-slate-400">
               <p className="mx-auto max-w-2xl leading-relaxed">
-                © Desenvolvido por <span className="font-semibold text-white">Breno Menon</span> | <span className="text-[#2dd4bf] font-bold">BM Digital</span>
+                © Desenvolvido por <span className="font-semibold text-white">Breno Menon</span> | <span className="text-blue-400 font-bold">BM Digital</span>
               </p>
             </footer>
           </div>

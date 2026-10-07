@@ -8,6 +8,7 @@ import {
   Monitor,
   Trash2,
   Edit2,
+  Wifi,
 } from 'lucide-react';
 import { Screen, Playlist } from '../../types/signage';
 
@@ -70,10 +71,13 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
       slug,
       location: location.trim() || 'Principal',
       orientation,
+      aspectRatio: orientation === 'landscape' ? '16:9' : '9:16',
+      resolution: editingScreen?.resolution || '1080p',
+      status: 'online',
       activePlaylistId: activePlaylistId || playlists[0]?.id || 'default',
-      isOnline: true,
       lastPing: new Date().toISOString(),
-      pairingCode: editingScreen?.pairingCode || `BM-${Math.floor(1000 + Math.random() * 9000)}`,
+      pairedAt: editingScreen?.pairedAt || new Date().toISOString(),
+      pairingCode: editingScreen?.pairingCode || `TV-${Math.floor(1000 + Math.random() * 9000)}`,
     };
 
     onSaveScreen(screenData);
@@ -81,7 +85,7 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
   };
 
   const handleCopyLink = (slug: string) => {
-    const url = `${window.location.origin}/tv/${slug}`;
+    const url = `${window.location.origin}?screen=${slug}`;
     navigator.clipboard.writeText(url);
     setCopiedSlug(slug);
     setTimeout(() => setCopiedSlug(null), 2500);
@@ -90,29 +94,36 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
   return (
     <div className="space-y-4">
       {/* Subheader & Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#25334a]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-700/80">
         <div>
           <h2 className="text-sm font-bold text-white tracking-tight">
             Monitores e Telas Conectadas
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            Gerencie múltiplos displays, links diretos e orientações (16:9 / 9:16)
+            Gerencie múltiplos displays, links diretos e orientações (16:9 Horizontal / 9:16 Vertical)
           </p>
         </div>
 
         <button
           onClick={() => handleOpenModal()}
-          className="flex items-center gap-1.5 px-4 py-2 bg-[#2dd4bf] hover:bg-[#20b8a4] active:scale-95 text-[#042f2e] text-xs font-bold rounded-full transition-all cursor-pointer shadow-sm self-start sm:self-auto"
+          className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white text-xs font-bold rounded-full transition-all cursor-pointer shadow-md self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" />
-          <span>Conectar Nova TV</span>
+          <span>Cadastrar Nova TV</span>
         </button>
       </div>
 
       {/* Screens Grid */}
       {screens.length === 0 ? (
-        <div className="p-10 text-center bg-[#151f32] border border-dashed border-[#25334a] rounded-3xl">
-          <p className="text-xs text-slate-400">Nenhuma tela cadastrada.</p>
+        <div className="p-10 text-center bg-slate-800/40 border border-dashed border-slate-700 rounded-3xl space-y-3">
+          <p className="text-xs text-slate-400">Nenhuma TV cadastrada ainda.</p>
+          <button
+            onClick={() => handleOpenModal()}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-full transition-all cursor-pointer shadow"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Cadastrar Primeira TV</span>
+          </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -123,12 +134,12 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
             return (
               <div
                 key={sc.id}
-                className="bg-[#151f32] border border-[#25334a] rounded-2xl p-4 sm:p-5 space-y-4 transition-all hover:border-[#384b6c] shadow-sm flex flex-col justify-between"
+                className="bg-slate-800/70 border border-slate-700/80 rounded-2xl p-4 sm:p-5 space-y-4 transition-all hover:border-blue-500/50 shadow-sm flex flex-col justify-between"
               >
                 {/* Header */}
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-[#0d131f] border border-[#25334a] text-[#2dd4bf]">
+                    <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-blue-400">
                       {isLandscape ? <Monitor className="w-4 h-4" /> : <Smartphone className="w-4 h-4" />}
                     </div>
                     <div>
@@ -137,15 +148,15 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
                     </div>
                   </div>
 
-                  {/* Clean Status Badge */}
-                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#2dd4bf]/10 border border-[#2dd4bf]/25 text-[11px] font-semibold text-[#2dd4bf]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#2dd4bf]"></span>
+                  {/* Status Badge */}
+                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/15 border border-blue-500/30 text-[11px] font-semibold text-blue-300">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
                     <span>Conectada</span>
                   </div>
                 </div>
 
                 {/* Specs */}
-                <div className="grid grid-cols-2 gap-2 p-3 bg-[#0d131f] rounded-xl border border-[#25334a] text-xs">
+                <div className="grid grid-cols-2 gap-2 p-3 bg-slate-900/80 rounded-xl border border-slate-700/80 text-xs">
                   <div>
                     <span className="text-slate-400 text-[10px]">Formato:</span>
                     <div className="font-semibold text-slate-200 mt-0.5">
@@ -158,7 +169,7 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
                       {sc.pairingCode || 'TV-1001'}
                     </div>
                   </div>
-                  <div className="col-span-2 pt-2 border-t border-[#25334a]">
+                  <div className="col-span-2 pt-2 border-t border-slate-800">
                     <span className="text-slate-400 text-[10px]">Programação:</span>
                     <div className="font-semibold text-slate-200 mt-0.5 truncate">
                       {activePlaylist?.name || 'Padrão'} ({activePlaylist?.items.length || 0} slides)
@@ -170,12 +181,12 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
                 <div className="flex items-center gap-2 pt-1">
                   <button
                     onClick={() => handleCopyLink(sc.slug)}
-                    className="flex-1 py-2 px-3.5 bg-[#1e293b] hover:bg-[#27364d] text-slate-200 hover:text-white text-xs font-semibold rounded-full border border-[#2d3d57] transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                    className="flex-1 py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold rounded-full border border-slate-700 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                   >
                     {copiedSlug === sc.slug ? (
                       <>
-                        <Check className="w-3.5 h-3.5 text-[#2dd4bf]" />
-                        <span className="text-[#2dd4bf] font-bold">Copiado</span>
+                        <Check className="w-3.5 h-3.5 text-blue-400" />
+                        <span className="text-blue-400 font-bold">Copiado</span>
                       </>
                     ) : (
                       <>
@@ -187,7 +198,7 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
 
                   <button
                     onClick={() => onLaunchPlayer(sc.slug)}
-                    className="flex-1 py-2 px-3.5 bg-[#2dd4bf] hover:bg-[#20b8a4] active:scale-95 text-[#042f2e] text-xs font-bold rounded-full transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
+                    className="flex-1 py-2 px-3.5 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white text-xs font-bold rounded-full transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
                   >
                     <Play className="w-3 h-3 fill-current" />
                     <span>Abrir TV</span>
@@ -195,7 +206,7 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
 
                   <button
                     onClick={() => handleOpenModal(sc)}
-                    className="p-2 bg-[#1e293b] hover:bg-[#27364d] text-slate-300 hover:text-white rounded-full border border-[#2d3d57] transition-colors cursor-pointer"
+                    className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-full border border-slate-700 transition-colors cursor-pointer"
                     title="Editar"
                   >
                     <Edit2 className="w-3.5 h-3.5" />
@@ -204,7 +215,7 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
                   {screens.length > 1 && (
                     <button
                       onClick={() => onDeleteScreen(sc.id)}
-                      className="p-2 bg-[#1e293b] hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-full border border-[#2d3d57] hover:border-red-500/40 transition-colors cursor-pointer"
+                      className="p-2 bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-full border border-slate-700 hover:border-red-500/40 transition-colors cursor-pointer"
                       title="Excluir"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -220,9 +231,9 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
       {/* Edit/Create Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="w-full max-w-sm bg-[#151f32] border border-[#25334a] rounded-3xl p-6 space-y-4 shadow-2xl">
+          <div className="w-full max-w-sm bg-slate-900 border border-slate-700/80 rounded-3xl p-6 space-y-4 shadow-2xl">
             <h3 className="text-sm font-bold text-white tracking-tight">
-              {editingScreen ? 'Editar Configurações da TV' : 'Conectar Nova TV'}
+              {editingScreen ? 'Editar Configurações da TV' : 'Cadastrar Nova TV'}
             </h3>
 
             <div className="space-y-3">
@@ -235,7 +246,7 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Ex: TV Principal - Salão"
-                  className="w-full px-3.5 py-2.5 bg-[#0d131f] border border-[#25334a] rounded-xl text-xs text-white focus:outline-none focus:border-[#2dd4bf] transition-colors"
+                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-blue-500 transition-colors"
                 />
               </div>
 
@@ -248,7 +259,7 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   placeholder="Ex: Recepção / Balcão"
-                  className="w-full px-3.5 py-2.5 bg-[#0d131f] border border-[#25334a] rounded-xl text-xs text-white focus:outline-none focus:border-[#2dd4bf] transition-colors"
+                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-blue-500 transition-colors"
                 />
               </div>
 
@@ -262,8 +273,8 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
                     onClick={() => setOrientation('landscape')}
                     className={`py-2 px-3 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
                       orientation === 'landscape'
-                        ? 'bg-[#2dd4bf] text-[#042f2e] border-[#2dd4bf] shadow-sm'
-                        : 'bg-[#0d131f] text-slate-400 border-[#25334a]'
+                        ? 'bg-blue-600 text-white border-blue-500 shadow-md'
+                        : 'bg-slate-950 text-slate-400 border-slate-700'
                     }`}
                   >
                     16:9 Horizontal
@@ -273,8 +284,8 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
                     onClick={() => setOrientation('portrait')}
                     className={`py-2 px-3 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
                       orientation === 'portrait'
-                        ? 'bg-[#2dd4bf] text-[#042f2e] border-[#2dd4bf] shadow-sm'
-                        : 'bg-[#0d131f] text-slate-400 border-[#25334a]'
+                        ? 'bg-blue-600 text-white border-blue-500 shadow-md'
+                        : 'bg-slate-950 text-slate-400 border-slate-700'
                     }`}
                   >
                     9:16 Vertical
@@ -289,10 +300,10 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
                 <select
                   value={activePlaylistId}
                   onChange={(e) => setActivePlaylistId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-[#0d131f] border border-[#25334a] rounded-xl text-xs text-white focus:outline-none focus:border-[#2dd4bf] transition-colors"
+                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-blue-500 transition-colors"
                 >
                   {playlists.map((pl) => (
-                    <option key={pl.id} value={pl.id} className="bg-[#151f32]">
+                    <option key={pl.id} value={pl.id} className="bg-slate-900">
                       {pl.name} ({pl.items.length} slides)
                     </option>
                   ))}
@@ -300,7 +311,7 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
               </div>
             </div>
 
-            <div className="pt-3 border-t border-[#25334a] flex items-center justify-end gap-2.5">
+            <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-2.5">
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
@@ -311,7 +322,7 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
               <button
                 type="button"
                 onClick={handleSave}
-                className="px-5 py-2 bg-[#2dd4bf] hover:bg-[#20b8a4] text-[#042f2e] text-xs font-bold rounded-full transition-all cursor-pointer shadow-sm"
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-full transition-all cursor-pointer shadow-md"
               >
                 Salvar TV
               </button>

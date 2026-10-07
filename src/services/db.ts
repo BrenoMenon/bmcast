@@ -13,95 +13,16 @@ import { weatherService } from './weatherService';
 export const DB_CHANGE_EVENT = 'bmcast_db_changed';
 
 const STORAGE_KEYS = {
-  SCREENS: 'bmcast_screens_clean_v4',
-  MEDIA: 'bmcast_media_clean_v4',
-  PLAYLISTS: 'bmcast_playlists_clean_v4',
-  CONFIG: 'bmcast_config_clean_v4',
-  TICKER: 'bmcast_ticker_clean_v4',
-  WEATHER: 'bmcast_weather_clean_v4',
+  SCREENS: 'bmcast_screens_clean_v6',
+  MEDIA: 'bmcast_media_clean_v6',
+  PLAYLISTS: 'bmcast_playlists_clean_v6',
+  CONFIG: 'bmcast_config_clean_v6',
+  TICKER: 'bmcast_ticker_clean_v6',
+  WEATHER: 'bmcast_weather_clean_v6',
 };
 
-// Preset demo pack available only if user chooses to load it
-export const DEMO_PRESET_PACK: MediaItem[] = [
-  {
-    id: 'demo-cardapio-1',
-    title: 'Smash Burger Artesanal Trufado',
-    type: 'image',
-    url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=1920&q=80',
-    thumbnail: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=75',
-    durationDefault: 12,
-    category: 'cardapio',
-    createdAt: new Date().toISOString(),
-    dimensions: '1920x1080',
-    fileSize: '1.4 MB',
-    brandConfig: {
-      showBrand: true,
-      brandName: 'PONTES LANCHES & BURGER',
-      brandSlogan: 'Carne 100% Black Angus • Pão Brioche Selado na Manteiga',
-      badgeText: 'CARDÁPIO GOURMET',
-      brandPosition: 'top-left',
-      accentColor: '#2563EB',
-    },
-    qrConfig: {
-      showQrCode: true,
-      qrCodeType: 'generated',
-      qrCodeUrl: 'https://wa.me/5511999999999?text=Quero%20fazer%20um%20pedido',
-      qrCodeLabel: 'Peça no WhatsApp e retire no balcão',
-      qrCodePosition: 'bottom-right',
-      qrCodeSize: 'medium',
-    },
-    categoryOverlay: {
-      showOverlayBadge: true,
-      showPriceTag: true,
-      badgeText: 'MAIS PEDIDO',
-      headline: 'Monster Smash Bacon Duplo',
-      subheadline: 'Duas carnes de 160g prensadas, cheddar inglês cremoso, bacon crocante e molho especial.',
-      priceOriginal: 'R$ 44,90',
-      pricePromo: 'R$ 36,90',
-      accentColor: '#2563EB',
-      position: 'bottom',
-    },
-  },
-  {
-    id: 'demo-promo-1',
-    title: 'Happy Hour - Chopp Artesanal & Petiscos',
-    type: 'image',
-    url: 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=1920&q=80',
-    thumbnail: 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=600&q=75',
-    durationDefault: 10,
-    category: 'promo',
-    createdAt: new Date().toISOString(),
-    dimensions: '1920x1080',
-    fileSize: '1.8 MB',
-    brandConfig: {
-      showBrand: true,
-      brandName: 'PONTES LANCHES & TAP HOUSE',
-      brandSlogan: 'De Terça a Sexta das 17h às 20h',
-      badgeText: 'OFERTA LIMITADA',
-      brandPosition: 'top-left',
-      accentColor: '#E11D48',
-    },
-    qrConfig: {
-      showQrCode: true,
-      qrCodeType: 'generated',
-      qrCodeUrl: 'https://instagram.com/ponteslanches',
-      qrCodeLabel: 'Siga no Instagram e ganhe desconto',
-      qrCodePosition: 'bottom-right',
-      qrCodeSize: 'medium',
-    },
-    categoryOverlay: {
-      showOverlayBadge: true,
-      showPriceTag: true,
-      badgeText: 'CHOPP EM DOBRO',
-      headline: 'Chopp Pilsen Trincando 500ml',
-      subheadline: 'Peça uma caneca congelada e a segunda é por conta da casa!',
-      priceOriginal: 'R$ 18,00',
-      pricePromo: 'R$ 9,90 cada',
-      accentColor: '#E11D48',
-      position: 'bottom',
-    },
-  },
-];
+// Start 100% blank - no preloaded images or demo pack
+export const DEMO_PRESET_PACK: MediaItem[] = [];
 
 const DEFAULT_BRAND_PROFILE: CompanyBrandProfile = {
   name: 'Minha Empresa',
@@ -112,6 +33,10 @@ const DEFAULT_BRAND_PROFILE: CompanyBrandProfile = {
   instagramHandle: '',
   websiteUrl: '',
   defaultQrCodeUrl: '',
+  defaultQrCodeImage: '',
+  businessCategory: 'outro',
+  onboardingCompleted: false,
+  supabaseConnected: false,
 };
 
 const DEFAULT_CONFIG: SystemConfig = {
