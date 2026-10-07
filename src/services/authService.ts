@@ -1,8 +1,10 @@
+import { supabase } from './supabaseClient';
+
 export interface UserAccount {
   id: string;
   name: string;
   email: string;
-  passwordHash: string; // Plain/Base64 stored locally
+  passwordHash: string;
   securityQuestion: string;
   securityAnswer: string;
   createdAt: string;
@@ -15,12 +17,11 @@ export interface AuthSession {
     email: string;
   };
   token: string;
+  isNewRegistration?: boolean;
 }
 
-export type User = AuthSession['user'];
-
-const STORAGE_USERS_KEY = 'bmcast_registered_users_v3';
-const STORAGE_SESSION_KEY = 'bmcast_active_session_v3';
+const STORAGE_USERS_KEY = 'bmcast_registered_users_v6';
+const STORAGE_SESSION_KEY = 'bmcast_active_session_v6';
 
 class AuthenticationService {
   private users: UserAccount[] = [];
@@ -28,6 +29,7 @@ class AuthenticationService {
 
   constructor() {
     this.loadFromStorage();
+    this.trySyncFromSupabase();
   }
 
   private loadFromStorage() {
@@ -35,13 +37,34 @@ class AuthenticationService {
     try {
       const rawUsers = localStorage.getItem(STORAGE_USERS_KEY);
       this.users = rawUsers ? JSON.parse(rawUsers) : [];
-
       const rawSession = localStorage.getItem(STORAGE_SESSION_KEY);
       this.currentSession = rawSession ? JSON.parse(rawSession) : null;
     } catch (e) {
       console.error('Erro ao ler usuários:', e);
       this.users = [];
       this.currentSession = null;
+    }
+  }
+
+  private async trySyncFromSupabase() {
+    try {
+      const { data, error } = await supabase.from('bmcast_users').select('*');
+      if (!error && Array.isArray(data) && data.length > 0) {
+        // Mesclar usuários do Supabase
+        const existingIds = new Set(this.users.map((u) => u.email.toLowerCase()));
+        let changed = false;
+        data.forEach((remoteUser) => {
+          if (!existingIds.has(remoteUser.email?.toLowerCase())) {
+            this.users.push(remoteUser);
+            changed = true;
+          }
+        });
+        if (changed) {
+          this.saveUsers();
+        }
+      }
+    } catch {
+      // Falha silenciosa com fallback local garantido
     }
   }
 
@@ -64,16 +87,24 @@ class AuthenticationService {
     return this.currentSession ? this.currentSession.user : null;
   }
 
-  /**
-   * Registra uma nova conta com pergunta e resposta secreta
-   */
-  signUp(params: {
+  getCurrentSession(): AuthSession | null {
+    return this.currentSession;
+  }
+
+  clearNewRegistrationFlag() {
+    if (this.currentSession) {
+      this.currentSession.isNewRegistration = false;
+      this.saveSession();
+    }
+  }
+
+  async signUp(params: {
     name: string;
     email: string;
     password: string;
     securityQuestion: string;
     securityAnswer: string;
-  }): { success: boolean; error?: string; user?: AuthSession['user'] } {
+  }): Promise<{ success: boolean; error?: string; user?: AuthSession['user'] }> {
     const cleanEmail = params.email.trim().toLowerCase();
     const cleanPassword = params.password.trim();
     const cleanQuestion = params.securityQuestion.trim();
@@ -82,13 +113,11 @@ class AuthenticationService {
     if (!cleanEmail || !cleanPassword) {
       return { success: false, error: 'E-mail e senha são obrigatórios.' };
     }
-
     if (cleanPassword.length < 6) {
       return { success: false, error: 'A senha deve ter pelo menos 6 caracteres.' };
     }
-
     if (!cleanQuestion || !cleanAnswer) {
-      return { success: false, error: 'Por favor, defina sua pergunta e resposta secreta para recuperação.' };
+      return { success: false, error: 'Defina sua pergunta e resposta secreta para recuperação.' };
     }
 
     const existing = this.users.find((u) => u.email.toLowerCase() === cleanEmail);
@@ -109,7 +138,13 @@ class AuthenticationService {
     this.users.push(newUser);
     this.saveUsers();
 
-    // Inicia sessão automaticamente após cadastro
+    // Sincroniza em background no Supabase caso a tabela exista
+    try {
+      void supabase.from('bmcast_users').insert([newUser]);
+    } catch {
+      // Ignorar fallback seguro
+    }
+
     this.currentSession = {
       user: {
         id: newUser.id,
@@ -117,15 +152,13 @@ class AuthenticationService {
         email: newUser.email,
       },
       token: `tok_${Date.now()}`,
+      isNewRegistration: true,
     };
     this.saveSession();
 
     return { success: true, user: this.currentSession.user };
   }
 
-  /**
-   * Login tradicional com email e senha
-   */
   signIn(email: string, password: string): { success: boolean; error?: string; user?: AuthSession['user'] } {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = password.trim();
@@ -134,7 +167,6 @@ class AuthenticationService {
     if (!user) {
       return { success: false, error: 'E-mail não encontrado. Crie sua conta primeiro.' };
     }
-
     if (user.passwordHash !== cleanPassword) {
       return { success: false, error: 'Senha incorreta. Tente novamente ou use a chave de recuperação.' };
     }
@@ -146,24 +178,19 @@ class AuthenticationService {
         email: user.email,
       },
       token: `tok_${Date.now()}`,
+      isNewRegistration: false,
     };
     this.saveSession();
 
     return { success: true, user: this.currentSession.user };
   }
 
-  /**
-   * Obtém a pergunta de segurança de um usuário pelo email
-   */
   getSecurityQuestion(email: string): string | null {
     const cleanEmail = email.trim().toLowerCase();
     const user = this.users.find((u) => u.email.toLowerCase() === cleanEmail);
     return user ? user.securityQuestion : null;
   }
 
-  /**
-   * Redefine a senha validando a resposta de segurança
-   */
   recoverPassword(params: {
     email: string;
     securityAnswer: string;
@@ -189,7 +216,6 @@ class AuthenticationService {
     user.passwordHash = cleanNewPass;
     this.saveUsers();
 
-    // Loga automaticamente com a nova senha
     this.currentSession = {
       user: {
         id: user.id,
@@ -197,6 +223,7 @@ class AuthenticationService {
         email: user.email,
       },
       token: `tok_${Date.now()}`,
+      isNewRegistration: false,
     };
     this.saveSession();
 

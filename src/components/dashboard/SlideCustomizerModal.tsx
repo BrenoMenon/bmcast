@@ -2,119 +2,110 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   Upload,
-  Sparkles,
-  Store,
-  Clock,
-  Image as ImageIcon,
   Check,
-  Utensils,
-  Flame,
-  Megaphone,
+  Store,
+  QrCode,
+  Image as ImageIcon,
+  Tag,
+  Palette,
   Eye,
   Sliders,
-  Palette,
-  QrCode,
-  Tag,
-  AlertCircle,
-  Search,
-  CheckCircle2,
+  Type,
+  Trash2,
 } from 'lucide-react';
 import {
   MediaItem,
   SlideCategoryType,
+  CompanyBrandProfile,
   QrCodePosition,
   QrCodeSize,
   BrandPosition,
-  SlideBrandConfig,
-  SlideQrCodeConfig,
-  CategoryOverlayConfig,
-  CompanyBrandProfile,
 } from '../../types/signage';
 import { qrService } from '../../services/qrService';
+import { useTheme } from '../../context/ThemeContext';
 
 interface SlideCustomizerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (savedItem: MediaItem, addToPlaylist: boolean) => void;
+  onSuccess: (item: MediaItem, addToPlaylist: boolean) => void;
   initialItem?: MediaItem | null;
-  initialCategory?: SlideCategoryType;
   companyProfile: CompanyBrandProfile;
 }
 
-const CATEGORIES: {
-  id: SlideCategoryType;
-  title: string;
-  badge: string;
-  desc: string;
-  icon: any;
-  defaultAccent: string;
-}[] = [
-  {
-    id: 'cardapio',
-    title: 'Cardápio & Preços',
-    badge: 'CARDÁPIO',
-    desc: 'Pratos, hambúrgueres, pizzas, bebidas e itens com preços.',
-    icon: Utensils,
-    defaultAccent: '#2563EB',
-  },
-  {
-    id: 'promo',
-    title: 'Super Promoção & Ofertas',
-    badge: 'PROMOÇÃO',
-    desc: 'Ofertas com tempo limitado, descontos e combos especiais.',
-    icon: Flame,
-    defaultAccent: '#EF4444',
-  },
-  {
-    id: 'aviso',
-    title: 'Quadro de Avisos & Wi-Fi',
-    badge: 'AVISO IMPORTANTE',
-    desc: 'Horários, Wi-Fi da loja, regras e comunicados corporativos.',
-    icon: Megaphone,
-    defaultAccent: '#10B981',
-  },
-  {
-    id: 'mural',
-    title: 'Mural de Fotos & Institucional',
-    badge: 'COMUNICADO',
-    desc: 'Fotos de novidades, ambiente e mensagens institucionais.',
-    icon: ImageIcon,
-    defaultAccent: '#8B5CF6',
-  },
+const CATEGORY_TABS: { id: SlideCategoryType; label: string }[] = [
+  { id: 'cardapio', label: 'Cardápio / Produtos' },
+  { id: 'promo', label: 'Oferta / Promoção' },
+  { id: 'aviso', label: 'Comunicado / Aviso' },
+  { id: 'mural', label: 'Institucional' },
 ];
 
-const COLOR_PRESETS = [
-  { name: 'Azul Real', hex: '#2563EB' },
-  { name: 'Azul Celeste', hex: '#38BDF8' },
-  { name: 'Ciano Tech', hex: '#06B6D4' },
-  { name: 'Esmeralda', hex: '#10B981' },
-  { name: 'Laranja Sunset', hex: '#F97316' },
-  { name: 'Vermelho Fogo', hex: '#EF4444' },
-  { name: 'Rosa Pink', hex: '#EC4899' },
-  { name: 'Roxo Neon', hex: '#8B5CF6' },
-  { name: 'Dourado Ouro', hex: '#EAB308' },
-  { name: 'Grafite Escuro', hex: '#334155' },
+// Clean solid / studio backgrounds (NO unsplash links)
+const PRESET_SOLID_THEMES = [
+  { label: 'Grafite Escuro', color: '#0f172a' },
+  { label: 'Azul Corporativo', color: '#1e3a8a' },
+  { label: 'Verde Esmeralda', color: '#064e3b' },
+  { label: 'Vinho Bordô', color: '#4c0519' },
+  { label: 'Terracota', color: '#7c2d12' },
+  { label: 'Preto Absoluto', color: '#000000' },
 ];
+
+// WhatsApp Icon
+const WhatsAppIcon: React.FC<{ className?: string }> = ({ className = 'w-4 h-4' }) => (
+  <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
+    <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.62C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 9.27 20.92 6.78 19.05 4.91C17.18 3.03 14.69 2 12.04 2ZM12.05 3.67C14.25 3.67 16.31 4.53 17.87 6.09C19.42 7.65 20.28 9.72 20.28 11.92C20.28 16.46 16.59 20.15 12.04 20.15C10.56 20.15 9.11 19.76 7.85 19.01L7.55 18.83L4.44 19.65L5.27 16.61L5.07 16.3C4.24 14.98 3.8 13.47 3.8 11.91C3.8 7.37 7.5 3.67 12.05 3.67ZM8.53 7.33C8.37 7.33 8.1 7.39 7.87 7.64C7.65 7.89 7.02 8.48 7.02 9.68C7.02 10.88 7.9 12.03 8.02 12.19C8.14 12.35 9.73 14.81 12.17 15.86C12.75 16.11 13.2 16.26 13.55 16.37C14.13 16.55 14.66 16.53 15.08 16.47C15.55 16.4 16.52 15.88 16.73 15.3C16.93 14.72 16.93 14.22 16.87 14.12C16.81 14.02 16.66 13.96 16.43 13.85C16.2 13.73 15.09 13.19 14.89 13.11C14.68 13.04 14.53 13 14.37 13.24C14.22 13.48 13.78 14.02 13.64 14.17C13.51 14.33 13.37 14.35 13.15 14.23C12.92 14.12 12.19 13.88 11.32 13.11C10.65 12.51 10.19 11.77 10.06 11.55C9.94 11.33 10.05 11.2 10.16 11.09C10.27 10.98 10.4 10.8 10.52 10.66C10.64 10.52 10.68 10.41 10.76 10.25C10.84 10.09 10.8 9.94 10.74 9.83C10.68 9.72 10.22 8.59 10.03 8.12C9.84 7.67 9.65 7.73 9.5 7.72C9.37 7.72 9.21 7.71 9.06 7.71C8.9 7.71 8.65 7.77 8.53 7.33Z" />
+  </svg>
+);
+
+const formatWhatsAppPhone = (value: string): string => {
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+  if (!digits) return '';
+  if (digits.length <= 2) return `(${digits}`;
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
+};
+
+const FULL_COLOR_PALETTE = [
+  '#0d9488', '#06b6d4', '#0284c7', '#2563eb', '#4f46e5', '#7c3aed',
+  '#9333ea', '#c026d3', '#db2777', '#e11d48', '#dc2626', '#ea580c',
+  '#d97706', '#ca8a04', '#65a30d', '#16a34a', '#059669', '#0f172a'
+];
+
+// Generate simple SVG data URL for solid card background
+function createColorSvg(color: string): string {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080"><rect width="1920" height="1080" fill="${color}"/></svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
 
 export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
   initialItem,
-  initialCategory,
   companyProfile,
 }) => {
-  const [mobileTab, setMobileTab] = useState<'edit' | 'preview'>('edit');
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
 
+  const [activeTab, setActiveTab] = useState<'content' | 'brand' | 'qr' | 'style'>('content');
+  const [mobileTab, setMobileTab] = useState<'edit' | 'preview'>('edit');
+
+  // Slide Basic Data
   const [title, setTitle] = useState('');
+  const [category, setCategory] = useState<SlideCategoryType>('cardapio');
   const [imageUrl, setImageUrl] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<SlideCategoryType>('cardapio');
   const [durationSeconds, setDurationSeconds] = useState(12);
   const [addToActivePlaylist, setAddToActivePlaylist] = useState(true);
 
-  // Overlay Darkness
-  const [overlayDarkness, setOverlayDarkness] = useState<number>(0); // 0 to 100
+  // Overlay Content
+  const [headline, setHeadline] = useState('');
+  const [subheadline, setSubheadline] = useState('');
+  const [priceOriginal, setPriceOriginal] = useState('');
+  const [pricePromo, setPricePromo] = useState('');
+  const [showPriceTag, setShowPriceTag] = useState(true);
+  const [showOverlayBadge, setShowOverlayBadge] = useState(true);
+  const [badgeText, setBadgeText] = useState('DESTAQUE');
+  const [accentColor, setAccentColor] = useState('#0d9488');
 
   // Brand config
   const [showBrand, setShowBrand] = useState(true);
@@ -122,17 +113,6 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
   const [brandSlogan, setBrandSlogan] = useState('');
   const [brandLogo, setBrandLogo] = useState('');
   const [brandPosition, setBrandPosition] = useState<BrandPosition>('top-left');
-  const [accentColor, setAccentColor] = useState('#2563EB');
-
-  // Category Overlay config
-  const [showOverlayBadge, setShowOverlayBadge] = useState(false);
-  const [showPriceTag, setShowPriceTag] = useState(false);
-  const [badgeText, setBadgeText] = useState('');
-  const [headline, setHeadline] = useState('');
-  const [subheadline, setSubheadline] = useState('');
-  const [priceOriginal, setPriceOriginal] = useState('');
-  const [pricePromo, setPricePromo] = useState('');
-  const [discountBadge, setDiscountBadge] = useState('');
 
   // QR Code config
   const [showQrCode, setShowQrCode] = useState(false);
@@ -143,149 +123,113 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
   const [qrCodePosition, setQrCodePosition] = useState<QrCodePosition>('bottom-right');
   const [qrCodeSize, setQrCodeSize] = useState<QrCodeSize>('medium');
 
-  const [generatedQrDataUrl, setGeneratedQrDataUrl] = useState('');
+  // Dynamic QR Code generation cache
+  const [generatedQrDataUrl, setGeneratedQrDataUrl] = useState<string>('');
 
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const qrImageInputRef = useRef<HTMLInputElement | null>(null);
-  const brandLogoInputRef = useRef<HTMLInputElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const qrFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setErrorMessage(null);
     if (initialItem) {
       setTitle(initialItem.title || '');
+      setCategory(initialItem.category || 'cardapio');
       setImageUrl(initialItem.url || '');
-      setSelectedCategory(initialItem.category || 'cardapio');
       setDurationSeconds(initialItem.durationDefault || 12);
 
-      const b = initialItem.brandConfig;
-      setShowBrand(b ? b.showBrand : true);
-      setBrandName(b?.brandName || companyProfile.name || '');
-      setBrandSlogan(b?.brandSlogan || companyProfile.slogan || '');
-      setBrandLogo(b?.brandLogo || companyProfile.logoUrl || '');
-      setBrandPosition(b?.brandPosition || 'top-left');
-      setAccentColor(b?.accentColor || companyProfile.accentColor || '#2563EB');
+      // Overlays
+      const ov = initialItem.categoryOverlay;
+      setHeadline(ov?.headline || initialItem.title || '');
+      setSubheadline(ov?.subheadline || '');
+      setPriceOriginal(ov?.priceOriginal || '');
+      setPricePromo(ov?.pricePromo || '');
+      setShowPriceTag(ov?.showPriceTag ?? true);
+      setShowOverlayBadge(ov?.showOverlayBadge ?? true);
+      setBadgeText(ov?.badgeText || 'DESTAQUE');
+      setAccentColor(ov?.accentColor || companyProfile.accentColor || '#0d9488');
 
-      const o = initialItem.categoryOverlay;
-      setShowOverlayBadge(o?.showOverlayBadge === true);
-      setShowPriceTag(o?.showPriceTag === true);
-      setBadgeText(o?.badgeText || '');
-      setHeadline(o?.headline || initialItem.title || '');
-      setSubheadline(o?.subheadline || '');
-      setPriceOriginal(o?.priceOriginal || '');
-      setPricePromo(o?.pricePromo || '');
-      setDiscountBadge(o?.discountPercent || '');
-      setOverlayDarkness(o?.overlayOpacity ?? 0);
+      // Brand
+      const br = initialItem.brandConfig;
+      setShowBrand(br?.showBrand ?? true);
+      setBrandName(br?.brandName || companyProfile.name || '');
+      setBrandSlogan(br?.brandSlogan || companyProfile.slogan || '');
+      setBrandLogo(br?.brandLogo || companyProfile.logoUrl || '');
+      setBrandPosition(br?.brandPosition || 'top-left');
 
-      const q = initialItem.qrConfig;
-      setShowQrCode(q ? q.showQrCode : false);
-      setQrCodeType(q?.qrCodeType || 'generated');
-      setQrCodeUrl(q?.qrCodeUrl || companyProfile.defaultQrCodeUrl || '');
-      setQrCodeCustomImage(q?.qrCodeCustomImage || '');
-      setQrCodeLabel(q?.qrCodeLabel || '');
-      setQrCodePosition(q?.qrCodePosition || 'bottom-right');
-      setQrCodeSize(q?.qrCodeSize || 'medium');
+      // QR
+      const qr = initialItem.qrConfig;
+      setShowQrCode(qr?.showQrCode ?? false);
+      setQrCodeType(qr?.qrCodeType || 'generated');
+      setQrCodeUrl(qr?.qrCodeUrl || companyProfile.defaultQrCodeUrl || '');
+      setQrCodeCustomImage(qr?.qrCodeCustomImage || companyProfile.defaultQrCodeImage || '');
+      setQrCodeLabel(qr?.qrCodeLabel || 'Aponte a câmera');
+      setQrCodePosition(qr?.qrCodePosition || 'bottom-right');
+      setQrCodeSize(qr?.qrCodeSize || 'medium');
     } else {
-      const targetCatId = initialCategory || 'cardapio';
-      const targetCat = CATEGORIES.find((c) => c.id === targetCatId) || CATEGORIES[0];
-
+      // New Slide: completely clean defaults, no unsplash images
       setTitle('');
-      setImageUrl(''); // 100% BLANK AS REQUESTED!
-      setSelectedCategory(targetCatId);
+      setCategory('cardapio');
+      setImageUrl('');
       setDurationSeconds(12);
 
-      setShowBrand(Boolean(companyProfile.name));
-      setBrandName(companyProfile.name || '');
-      setBrandSlogan(companyProfile.slogan || '');
-      setBrandLogo(companyProfile.logoUrl || '');
-      setBrandPosition('top-left');
-      setAccentColor(targetCat.defaultAccent || '#2563EB');
-
-      setShowOverlayBadge(false);
-      setShowPriceTag(false);
-      setBadgeText('');
       setHeadline('');
       setSubheadline('');
       setPriceOriginal('');
       setPricePromo('');
-      setDiscountBadge('');
-      setOverlayDarkness(0);
+      setShowPriceTag(true);
+      setShowOverlayBadge(true);
+      setBadgeText('DESTAQUE');
+      setAccentColor(companyProfile.accentColor || '#0d9488');
+
+      setShowBrand(true);
+      setBrandName(companyProfile.name || '');
+      setBrandSlogan(companyProfile.slogan || '');
+      setBrandLogo(companyProfile.logoUrl || '');
+      setBrandPosition('top-left');
 
       setShowQrCode(false);
       setQrCodeType('generated');
       setQrCodeUrl(companyProfile.defaultQrCodeUrl || '');
-      setQrCodeCustomImage('');
-      setQrCodeLabel('');
+      setQrCodeCustomImage(companyProfile.defaultQrCodeImage || '');
+      setQrCodeLabel('Acesse pelo QR Code');
       setQrCodePosition('bottom-right');
       setQrCodeSize('medium');
     }
-  }, [initialItem, initialCategory, companyProfile, isOpen]);
+  }, [initialItem, companyProfile, isOpen]);
 
+  // Update dynamic QR preview
   useEffect(() => {
-    let isCancelled = false;
-    const generate = async () => {
-      if (qrCodeType === 'generated') {
-        try {
-          const dataUrl = await qrService.generateDataUrl(
-            qrCodeUrl || 'https://bmcast.app',
-            '#000000',
-            '#ffffff'
-          );
-          if (!isCancelled) {
-            setGeneratedQrDataUrl(dataUrl);
-          }
-        } catch (e) {
-          console.error('Falha ao gerar QR:', e);
-        }
-      }
-    };
-    generate();
+    let isMounted = true;
+    if (showQrCode && qrCodeType === 'generated') {
+      const targetUrl = qrCodeUrl.trim() || 'https://bmcast.app';
+      qrService.generateDataUrl(targetUrl).then((url) => {
+        if (isMounted) setGeneratedQrDataUrl(url);
+      });
+    }
     return () => {
-      isCancelled = true;
+      isMounted = false;
     };
-  }, [qrCodeUrl, qrCodeType]);
+  }, [showQrCode, qrCodeType, qrCodeUrl]);
 
-  const handleCategorySelect = (catId: SlideCategoryType) => {
-    setSelectedCategory(catId);
-    const cat = CATEGORIES.find((c) => c.id === catId);
-    if (!cat) return;
-
-    setAccentColor(cat.defaultAccent);
-    setBadgeText(cat.badge);
-    setHeadline(cat.defaultHeadline);
-    setSubheadline(cat.defaultSubheadline);
-    setPriceOriginal(cat.defaultOriginalPrice || '');
-    setPricePromo(cat.defaultPromoPrice || '');
-    setQrCodeLabel(cat.defaultQrLabel);
-
-    if (catId === 'aviso' || catId === 'mural') {
-      setShowPriceTag(false);
-    } else {
-      setShowPriceTag(true);
-    }
-
-    // Auto set sample image of category if using preset
-    const matchingImg = PRESET_STOCK_IMAGES.find((s) => s.category === catId);
-    if (matchingImg && (!imageUrl || PRESET_STOCK_IMAGES.some((p) => p.url === imageUrl))) {
-      setImageUrl(matchingImg.url);
-    }
-  };
-
-  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Upload image handler
+  const handleUploadFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
       const dataUrl = await qrService.fileToDataUrl(file);
       setImageUrl(dataUrl);
-      if (!title || title === 'Novo Slide') {
+      if (!title) {
         setTitle(file.name.replace(/\.[^/.]+$/, ''));
       }
-      setErrorMessage(null);
+      if (!headline) {
+        setHeadline(file.name.replace(/\.[^/.]+$/, ''));
+      }
     } catch (err) {
-      console.error('Erro na imagem:', err);
+      console.error('Erro ao ler arquivo:', err);
     }
   };
 
-  const handleCustomQrFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Upload QR code image handler
+  const handleUploadQrFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
@@ -293,569 +237,728 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
       setQrCodeCustomImage(dataUrl);
       setQrCodeType('custom_upload');
     } catch (err) {
-      console.error('Erro no QR:', err);
-    }
-  };
-
-  const handleBrandLogoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const dataUrl = await qrService.fileToDataUrl(file);
-      setBrandLogo(dataUrl);
-    } catch (err) {
-      console.error('Erro no logo:', err);
+      console.error('Erro ao carregar QR code:', err);
     }
   };
 
   const handleSave = () => {
-    if (!imageUrl) {
-      setErrorMessage('Por favor, selecione ou envie uma imagem de fundo para o slide.');
-      return;
-    }
+    const resolvedTitle = title.trim() || headline.trim() || 'Novo Slide';
 
-    const slideBrand: SlideBrandConfig = {
-      showBrand,
-      brandName: brandName.trim(),
-      brandSlogan: brandSlogan.trim(),
-      brandLogo: brandLogo.trim(),
-      brandPosition,
-      accentColor,
-      badgeText: badgeText.trim(),
-    };
+    // If no image is provided, provide a clean dark canvas
+    const finalImageUrl = imageUrl || createColorSvg('#0f172a');
 
-    const slideQr: SlideQrCodeConfig = {
-      showQrCode,
-      qrCodeType,
-      qrCodeUrl: qrCodeUrl.trim(),
-      qrCodeCustomImage: qrCodeCustomImage.trim(),
-      qrCodeLabel: qrCodeLabel.trim(),
-      qrCodePosition,
-      qrCodeSize,
-    };
-
-    const slideOverlay: CategoryOverlayConfig = {
-      badgeText: badgeText.trim(),
-      headline: headline.trim() || title,
-      subheadline: subheadline.trim(),
-      priceOriginal: priceOriginal.trim(),
-      pricePromo: pricePromo.trim(),
-      accentColor,
-      showOverlayBadge,
-      showPriceTag,
-      position: 'bottom',
-      overlayOpacity: overlayDarkness,
-      discountPercent: discountBadge.trim(),
-    };
-
-    const savedMediaItem: MediaItem = {
+    const item: MediaItem = {
       id: initialItem?.id || `slide-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      title: title.trim() || headline.trim() || 'Slide BM Cast',
+      title: resolvedTitle,
       type: 'image',
-      url: imageUrl,
-      thumbnail: imageUrl,
-      durationDefault: Number(durationSeconds) || 12,
-      category: selectedCategory,
+      url: finalImageUrl,
+      thumbnail: finalImageUrl,
+      durationDefault: durationSeconds,
+      category,
       createdAt: initialItem?.createdAt || new Date().toISOString(),
       dimensions: '1920x1080',
-      brandConfig: slideBrand,
-      qrConfig: slideQr,
-      categoryOverlay: slideOverlay,
+      brandConfig: {
+        showBrand,
+        brandName: brandName.trim(),
+        brandSlogan: brandSlogan.trim(),
+        brandLogo: brandLogo.trim(),
+        brandPosition,
+        accentColor,
+      },
+      qrConfig: {
+        showQrCode,
+        qrCodeType,
+        qrCodeUrl: qrCodeUrl.trim(),
+        qrCodeCustomImage: qrCodeCustomImage.trim(),
+        qrCodeLabel: qrCodeLabel.trim(),
+        qrCodePosition,
+        qrCodeSize,
+      },
+      categoryOverlay: {
+        showOverlayBadge,
+        showPriceTag,
+        badgeText: badgeText.trim(),
+        headline: headline.trim(),
+        subheadline: subheadline.trim(),
+        priceOriginal: priceOriginal.trim(),
+        pricePromo: pricePromo.trim(),
+        accentColor,
+        position: 'bottom',
+      },
     };
 
-    onSuccess(savedMediaItem, addToActivePlaylist);
+    onSuccess(item, addToActivePlaylist);
     onClose();
   };
 
   if (!isOpen) return null;
 
   const resolvedQrImage =
-    qrCodeType === 'custom_upload' && qrCodeCustomImage ? qrCodeCustomImage : generatedQrDataUrl;
+    qrCodeType === 'custom_upload' && qrCodeCustomImage
+      ? qrCodeCustomImage
+      : generatedQrDataUrl;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto animate-in fade-in duration-150">
-      <div className="relative w-full max-w-6xl bg-slate-900 border border-slate-700/80 rounded-3xl overflow-hidden flex flex-col max-h-[95vh] shadow-2xl">
-        {/* Modal Top Bar */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-800 bg-slate-900/90">
-          <div>
-            <h2 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-blue-400" />
-              <span>{initialItem ? 'Editar Slide da TV' : 'Criar Novo Slide'}</span>
-            </h2>
-            <p className="text-[11px] text-slate-400">
-              Personalização completa: cores, fotos, preços, marca e QR Code dinâmico
-            </p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-150">
+      <div
+        className={`relative w-full max-w-5xl rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[95vh] border transition-colors ${
+          isDark
+            ? 'bg-[#0f172a] border-slate-800 text-white'
+            : 'bg-white border-slate-200 text-slate-900'
+        }`}
+      >
+        {/* Header */}
+        <div
+          className={`flex items-center justify-between px-5 py-3.5 border-b ${
+            isDark ? 'border-slate-800 bg-[#0b1120]' : 'border-slate-200 bg-slate-50'
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
+              <ImageIcon className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className={`text-sm font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                {initialItem ? 'Editar Slide da TV' : 'Criar Novo Slide'}
+              </h2>
+              <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                Personalize imagens, títulos, marca, preços e QR Code
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Mobile Tab */}
-            <div className="flex lg:hidden bg-slate-800 p-0.5 rounded-full border border-slate-700">
+            {/* Mobile Tab Switcher */}
+            <div className="flex lg:hidden bg-slate-200 dark:bg-slate-800 rounded-lg p-0.5">
               <button
                 type="button"
                 onClick={() => setMobileTab('edit')}
-                className={`px-3 py-1 rounded-full text-[11px] font-bold transition-all ${
-                  mobileTab === 'edit' ? 'bg-blue-600 text-white shadow' : 'text-slate-400'
+                className={`px-3 py-1 rounded text-xs font-semibold ${
+                  mobileTab === 'edit'
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                    : 'text-slate-500'
                 }`}
               >
-                Ajustes
+                Editar
               </button>
               <button
                 type="button"
                 onClick={() => setMobileTab('preview')}
-                className={`px-3 py-1 rounded-full text-[11px] font-bold transition-all ${
-                  mobileTab === 'preview' ? 'bg-blue-600 text-white shadow' : 'text-slate-400'
+                className={`px-3 py-1 rounded text-xs font-semibold ${
+                  mobileTab === 'preview'
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                    : 'text-slate-500'
                 }`}
               >
-                Preview TV
+                Simulador
               </button>
             </div>
 
             <button
               onClick={onClose}
-              className="p-1.5 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+              }`}
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Error message banner */}
-        {errorMessage && (
-          <div className="px-5 py-2.5 bg-red-950/60 border-b border-red-800 text-xs text-red-200 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-            <span>{errorMessage}</span>
-          </div>
-        )}
-
-        {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto grid grid-cols-1 lg:grid-cols-12 gap-5 p-4 sm:p-6">
-          {/* Form Column */}
+        {/* Modal Body: Two Columns */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 grid grid-cols-1 lg:grid-cols-12 gap-5">
+          {/* Controls Column */}
           <div className={`lg:col-span-7 space-y-4 ${mobileTab === 'preview' ? 'hidden lg:block' : 'block'}`}>
-            {/* Category Selector Tabs */}
-            <div className="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-3.5 space-y-2">
-              <span className="text-xs font-bold text-slate-200 uppercase tracking-wider block">
-                Tipo do Slide:
-              </span>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {CATEGORIES.map((cat) => {
-                  const Icon = cat.icon;
-                  const isSel = selectedCategory === cat.id;
-                  return (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => handleCategorySelect(cat.id)}
-                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1 ${
-                        isSel
-                          ? 'bg-blue-600 text-white border-blue-400 shadow-md font-bold'
-                          : 'bg-slate-900 border-slate-700 text-slate-300 hover:border-slate-600'
-                      }`}
-                    >
-                      <Icon className="w-4 h-4" />
-                      <span className="text-xs leading-tight">{cat.title.split('&')[0]}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* 1. Imagem de Fundo */}
-            <div className="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">
-                  01. Imagem de Fundo (16:9 Full HD)
-                </span>
-                <span className="text-[10px] text-slate-400">1920x1080</span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleImageFileChange}
-                  accept="image/*"
-                  className="hidden"
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center justify-center gap-2 py-2.5 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow"
-                >
-                  <Upload className="w-4 h-4" />
-                  <span>Enviar Foto do Computador / Celular</span>
-                </button>
-
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={imageUrl}
-                    onChange={(e) => {
-                      setImageUrl(e.target.value);
-                      setErrorMessage(null);
-                    }}
-                    placeholder="Ou cole o link direto da imagem..."
-                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-              </div>
-
-              {/* Image Status & Clear Action */}
-              <div className="pt-2 border-t border-slate-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                {imageUrl ? (
-                  <div className="flex items-center gap-2 text-emerald-400 font-semibold">
-                    <CheckCircle2 className="w-4 h-4 shrink-0" />
-                    <span className="truncate max-w-xs">Foto anexada ao slide</span>
-                    <button
-                      type="button"
-                      onClick={() => setImageUrl('')}
-                      className="px-2.5 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 text-[11px] font-bold border border-red-500/40 cursor-pointer transition-colors"
-                    >
-                      Remover Imagem (Deixar em Branco)
-                    </button>
-                  </div>
-                ) : (
-                  <span className="text-[11px] text-slate-400">
-                    Nenhuma foto selecionada. O slide usará fundo limpo na sua cor de destaque.
-                  </span>
-                )}
-              </div>
-
-              {/* Overlay Darkness Slider */}
-              <div className="pt-2 border-t border-slate-700/60 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-2 text-xs text-slate-300">
-                  <Sliders className="w-3.5 h-3.5 text-blue-400" />
-                  <span>Contraste / Escurecimento do Fundo:</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {[30, 50, 70, 85].map((val) => (
-                    <button
-                      key={val}
-                      type="button"
-                      onClick={() => setOverlayDarkness(val)}
-                      className={`px-2.5 py-1 rounded-full text-[11px] font-bold cursor-pointer transition-colors ${
-                        overlayDarkness === val
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-slate-900 text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      {val}%
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* 2. Cores e Estilo */}
-            <div className="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-                  <Palette className="w-3.5 h-3.5 text-blue-400" />
-                  <span>02. Cor de Destaque & Identidade Visual</span>
-                </span>
-                <span className="text-xs font-mono font-bold text-blue-400">{accentColor}</span>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                {COLOR_PRESETS.map((c) => (
+            {/* Category selection */}
+            <div>
+              <label className={`block text-[11px] font-semibold mb-1.5 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                Categoria do Slide
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                {CATEGORY_TABS.map((cat) => (
                   <button
-                    key={c.hex}
+                    key={cat.id}
                     type="button"
-                    onClick={() => setAccentColor(c.hex)}
-                    className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer ${
-                      accentColor.toUpperCase() === c.hex.toUpperCase()
-                        ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-900 scale-110'
-                        : 'opacity-85 hover:opacity-100 hover:scale-105'
+                    onClick={() => setCategory(cat.id)}
+                    className={`py-1.5 px-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer truncate ${
+                      category === cat.id
+                        ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
+                        : isDark
+                        ? 'bg-[#152033] text-slate-300 border-slate-700 hover:border-slate-600'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                     }`}
-                    style={{ backgroundColor: c.hex }}
-                    title={c.name}
                   >
-                    {accentColor.toUpperCase() === c.hex.toUpperCase() && (
-                      <Check className="w-3.5 h-3.5 text-white drop-shadow" />
-                    )}
+                    {cat.label}
                   </button>
                 ))}
-
-                {/* Free Color Picker */}
-                <div className="flex items-center gap-1.5 pl-2 border-l border-slate-700">
-                  <label className="text-[11px] text-slate-300 font-semibold cursor-pointer">
-                    Cor Livre:
-                  </label>
-                  <input
-                    type="color"
-                    value={accentColor}
-                    onChange={(e) => setAccentColor(e.target.value)}
-                    className="w-8 h-8 rounded-full border border-slate-600 bg-transparent cursor-pointer"
-                    title="Escolha qualquer cor personalizada"
-                  />
-                </div>
               </div>
             </div>
 
-            {/* 3. Textos, Badge e Preços */}
-            <div className="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-4 space-y-3">
-              <span className="text-xs font-bold text-slate-200 uppercase tracking-wider block">
-                03. Título, Destaques e Valores
-              </span>
+            {/* Inner Tabs: Content, Brand, QR Code, Style */}
+            <div className={`flex border-b text-xs ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
+              <button
+                type="button"
+                onClick={() => setActiveTab('content')}
+                className={`py-2 px-3 font-semibold border-b-2 transition-colors cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'content'
+                    ? 'border-sky-500 text-sky-600 dark:text-sky-400'
+                    : isDark ? 'border-transparent text-slate-400 hover:text-slate-200' : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <Type className="w-3.5 h-3.5" />
+                <span>Conteúdo & Imagem</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('brand')}
+                className={`py-2 px-3 font-semibold border-b-2 transition-colors cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'brand'
+                    ? 'border-sky-500 text-sky-600 dark:text-sky-400'
+                    : isDark ? 'border-transparent text-slate-400 hover:text-slate-200' : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <Store className="w-3.5 h-3.5" />
+                <span>Marca</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('qr')}
+                className={`py-2 px-3 font-semibold border-b-2 transition-colors cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'qr'
+                    ? 'border-sky-500 text-sky-600 dark:text-sky-400'
+                    : isDark ? 'border-transparent text-slate-400 hover:text-slate-200' : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <QrCode className="w-3.5 h-3.5" />
+                <span>QR Code</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('style')}
+                className={`py-2 px-3 font-semibold border-b-2 transition-colors cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'style'
+                    ? 'border-sky-500 text-sky-600 dark:text-sky-400'
+                    : isDark ? 'border-transparent text-slate-400 hover:text-slate-200' : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <Palette className="w-3.5 h-3.5" />
+                <span>Cores & Destaque</span>
+              </button>
+            </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            {/* TAB 1: CONTENT & IMAGE */}
+            {activeTab === 'content' && (
+              <div className="space-y-3 pt-1">
+                {/* Background Image Upload or Color Picker */}
                 <div>
-                  <label className="block text-[11px] text-slate-400 mb-1 font-medium">Etiqueta Badge</label>
-                  <input
-                    type="text"
-                    value={badgeText}
-                    onChange={(e) => setBadgeText(e.target.value)}
-                    placeholder="Ex: MAIS PEDIDO"
-                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white uppercase focus:outline-none focus:border-blue-500 font-bold"
-                  />
-                </div>
-
-                <div className="sm:col-span-2">
-                  <label className="block text-[11px] text-slate-400 mb-1 font-medium">Título do Slide / Produto</label>
-                  <input
-                    type="text"
-                    value={headline}
-                    onChange={(e) => setHeadline(e.target.value)}
-                    placeholder="Ex: Combo Especial Smash Burger"
-                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white font-bold focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] text-slate-400 mb-1 font-medium">Descrição Detalhada</label>
-                <input
-                  type="text"
-                  value={subheadline}
-                  onChange={(e) => setSubheadline(e.target.value)}
-                  placeholder="Ex: Acompanha batatas rústicas crocantes e refrigerante lata gelado..."
-                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-blue-500"
-                />
-              </div>
-
-              {/* Price Tags */}
-              <div className="p-3 bg-slate-900 rounded-xl border border-slate-700 space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-300 flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={showPriceTag}
-                      onChange={(e) => setShowPriceTag(e.target.checked)}
-                      className="rounded bg-slate-800 border-slate-700 text-blue-600"
-                    />
-                    <span>Exibir Bloco de Preços</span>
+                  <label className={`block text-[11px] font-semibold mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                    Imagem de Fundo do Slide
                   </label>
 
-                  {showPriceTag && (
-                    <span className="text-[11px] text-blue-400 font-semibold">
-                      Com destaque visual na TV
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleUploadFile}
+                      accept="image/*"
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-semibold transition-colors cursor-pointer ${
+                        isDark
+                          ? 'bg-[#152033] hover:bg-slate-800 border-slate-700 text-slate-200'
+                          : 'bg-slate-50 hover:bg-slate-100 border-slate-300 text-slate-700'
+                      }`}
+                    >
+                      <Upload className="w-3.5 h-3.5 text-sky-500" />
+                      <span>{imageUrl ? 'Trocar Imagem do Slide' : 'Upload de Imagem (PC / Celular)'}</span>
+                    </button>
+
+                    {imageUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setImageUrl('')}
+                        className={`p-2 rounded-xl border transition-colors cursor-pointer text-rose-500 ${
+                          isDark ? 'border-slate-700 hover:bg-rose-500/10' : 'border-slate-300 hover:bg-rose-50'
+                        }`}
+                        title="Limpar Imagem"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Opção para colar URL direta da imagem */}
+                  <div className="mt-2.5">
+                    <span className={`block text-[10px] font-semibold mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      Ou colar URL da imagem:
                     </span>
-                  )}
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        value={imageUrl.startsWith('data:') ? '' : imageUrl}
+                        onChange={(e) => setImageUrl(e.target.value)}
+                        placeholder="Cole aqui o link da imagem (https://...)"
+                        className={`flex-1 px-3 py-1.5 border rounded-xl text-xs font-mono transition-colors focus:outline-none focus:border-sky-500 ${
+                          isDark
+                            ? 'bg-[#0b1120] border-slate-700 text-white placeholder-slate-500'
+                            : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
+                        }`}
+                      />
+                      {imageUrl && !imageUrl.startsWith('data:') && (
+                        <button
+                          type="button"
+                          onClick={() => setImageUrl('')}
+                          className="px-2.5 py-1 text-xs text-rose-400 hover:text-rose-300 border border-slate-700 rounded-xl"
+                        >
+                          Limpar
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Clean Solid Colors as alternative background */}
+                  <div className="mt-2.5">
+                    <span className={`block text-[10px] font-medium mb-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      Ou escolha uma cor sólida de fundo:
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {PRESET_SOLID_THEMES.map((themePreset) => (
+                        <button
+                          key={themePreset.color}
+                          type="button"
+                          onClick={() => setImageUrl(createColorSvg(themePreset.color))}
+                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium border cursor-pointer transition-all ${
+                            isDark
+                              ? 'bg-[#152033] border-slate-700 text-slate-300 hover:border-slate-500'
+                              : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                          }`}
+                        >
+                          <span
+                            className="w-3 h-3 rounded-full border border-black/20"
+                            style={{ backgroundColor: themePreset.color }}
+                          />
+                          <span>{themePreset.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
-                {showPriceTag && (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-                    <div>
-                      <label className="block text-[10px] text-slate-400 mb-1">Preço Normal (R$)</label>
+                {/* Headline & Subheadline */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className={`block text-[11px] font-semibold mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                      Título Principal *
+                    </label>
+                    <input
+                      type="text"
+                      value={headline}
+                      onChange={(e) => {
+                        setHeadline(e.target.value);
+                        if (!title) setTitle(e.target.value);
+                      }}
+                      placeholder="Ex: Café Especial & Waffle"
+                      className={`w-full px-3 py-2 border rounded-xl text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500/30 ${
+                        isDark
+                          ? 'bg-[#0b1120] border-slate-700 text-white placeholder-slate-500 focus:border-sky-500'
+                          : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:border-sky-600'
+                      }`}
+                    />
+                  </div>
+                  <div>
+                    <label className={`block text-[11px] font-semibold mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                      Subtítulo / Descrição
+                    </label>
+                    <input
+                      type="text"
+                      value={subheadline}
+                      onChange={(e) => setSubheadline(e.target.value)}
+                      placeholder="Ex: Acompanha calda artesanal de frutas"
+                      className={`w-full px-3 py-2 border rounded-xl text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500/30 ${
+                        isDark
+                          ? 'bg-[#0b1120] border-slate-700 text-white placeholder-slate-500 focus:border-sky-500'
+                          : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:border-sky-600'
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                {/* Price tag inputs */}
+                <div
+                  className={`p-3 rounded-xl border space-y-2.5 ${
+                    isDark ? 'bg-[#152033] border-slate-800' : 'bg-slate-50 border-slate-200'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className={`text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                      Preço / Valor no Slide
+                    </span>
+                    <label className="flex items-center gap-1.5 text-xs cursor-pointer">
                       <input
-                        type="text"
-                        value={priceOriginal}
-                        onChange={(e) => setPriceOriginal(e.target.value)}
-                        placeholder="Ex: R$ 49,90"
-                        className="w-full px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs text-slate-300 line-through"
+                        type="checkbox"
+                        checked={showPriceTag}
+                        onChange={(e) => setShowPriceTag(e.target.checked)}
+                        className="rounded text-sky-600"
                       />
+                      <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>Exibir Preço</span>
+                    </label>
+                  </div>
+
+                  {showPriceTag && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className={`block text-[10px] mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                          Preço De (Opcional - Riscado)
+                        </label>
+                        <input
+                          type="text"
+                          value={priceOriginal}
+                          onChange={(e) => setPriceOriginal(e.target.value)}
+                          placeholder="R$ 35,00"
+                          className={`w-full px-3 py-1.5 border rounded-lg text-xs font-mono ${
+                            isDark
+                              ? 'bg-[#0b1120] border-slate-700 text-white'
+                              : 'bg-white border-slate-300 text-slate-900'
+                          }`}
+                        />
+                      </div>
+                      <div>
+                        <label className={`block text-[10px] mb-1 font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                          Preço Promocional / Atual
+                        </label>
+                        <input
+                          type="text"
+                          value={pricePromo}
+                          onChange={(e) => setPricePromo(e.target.value)}
+                          placeholder="R$ 24,90"
+                          className={`w-full px-3 py-1.5 border rounded-lg text-xs font-bold font-mono ${
+                            isDark
+                              ? 'bg-[#0b1120] border-slate-700 text-amber-400'
+                              : 'bg-white border-slate-300 text-amber-600'
+                          }`}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 2: BRAND */}
+            {activeTab === 'brand' && (
+              <div className="space-y-3 pt-1">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className={`text-xs font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                      Exibir Marca neste Slide
+                    </div>
+                    <div className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      Exibe seu logotipo e slogan no topo ou rodapé
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={showBrand}
+                      onChange={(e) => setShowBrand(e.target.checked)}
+                      className="rounded text-sky-600"
+                    />
+                    <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>Ativar Marca</span>
+                  </label>
+                </div>
+
+                {showBrand && (
+                  <div className="space-y-3 pt-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className={`block text-[11px] font-semibold mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                          Nome da Empresa
+                        </label>
+                        <input
+                          type="text"
+                          value={brandName}
+                          onChange={(e) => setBrandName(e.target.value)}
+                          placeholder={companyProfile.name || 'Nome do Estabelecimento'}
+                          className={`w-full px-3 py-2 border rounded-xl text-xs ${
+                            isDark ? 'bg-[#0b1120] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                          }`}
+                        />
+                      </div>
+                      <div>
+                        <label className={`block text-[11px] font-semibold mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                          Slogan
+                        </label>
+                        <input
+                          type="text"
+                          value={brandSlogan}
+                          onChange={(e) => setBrandSlogan(e.target.value)}
+                          placeholder={companyProfile.slogan || 'Qualidade & Tradição'}
+                          className={`w-full px-3 py-2 border rounded-xl text-xs ${
+                            isDark ? 'bg-[#0b1120] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                          }`}
+                        />
+                      </div>
                     </div>
 
                     <div>
-                      <label className="block text-[10px] text-emerald-400 mb-1 font-bold">Preço Promocional (R$)</label>
-                      <input
-                        type="text"
-                        value={pricePromo}
-                        onChange={(e) => setPricePromo(e.target.value)}
-                        placeholder="Ex: R$ 36,90"
-                        className="w-full px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white font-extrabold"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] text-amber-400 mb-1 font-medium">Selo de Desconto</label>
-                      <input
-                        type="text"
-                        value={discountBadge}
-                        onChange={(e) => setDiscountBadge(e.target.value)}
-                        placeholder="Ex: 25% OFF"
-                        className="w-full px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs text-amber-300 font-bold"
-                      />
+                      <label className={`block text-[11px] font-semibold mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                        Posição da Marca na Tela
+                      </label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {(['top-left', 'top-right', 'header-bar'] as const).map((pos) => (
+                          <button
+                            key={pos}
+                            type="button"
+                            onClick={() => setBrandPosition(pos)}
+                            className={`py-1.5 px-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                              brandPosition === pos
+                                ? 'bg-sky-600 text-white border-sky-600'
+                                : isDark
+                                ? 'bg-[#152033] text-slate-300 border-slate-700'
+                                : 'bg-slate-50 text-slate-700 border-slate-200'
+                            }`}
+                          >
+                            {pos === 'top-left' ? 'Superior Esquerda' : pos === 'top-right' ? 'Superior Direita' : 'Barra Superior'}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}
               </div>
-            </div>
+            )}
 
-            {/* 4. QR Code */}
-            <div className="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-                  <QrCode className="w-3.5 h-3.5 text-blue-400" />
-                  <span>04. QR Code Interativo</span>
-                </span>
-
-                <label className="text-xs font-bold text-slate-300 flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={showQrCode}
-                    onChange={(e) => setShowQrCode(e.target.checked)}
-                    className="rounded bg-slate-800 border-slate-700 text-blue-600"
-                  />
-                  <span>Exibir na TV</span>
-                </label>
-              </div>
-
-              {showQrCode && (
-                <div className="space-y-3 pt-1 border-t border-slate-700/60">
-                  <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-700">
-                    <button
-                      type="button"
-                      onClick={() => setQrCodeType('generated')}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                        qrCodeType === 'generated'
-                          ? 'bg-blue-600 text-white shadow'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      Gerar por Link / WhatsApp
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setQrCodeType('custom_upload')}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                        qrCodeType === 'custom_upload'
-                          ? 'bg-blue-600 text-white shadow'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      Subir Imagem de QR Real
-                    </button>
+            {/* TAB 3: QR CODE */}
+            {activeTab === 'qr' && (
+              <div className="space-y-3 pt-1">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className={`text-xs font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                      Exibir QR Code na TV
+                    </div>
+                    <div className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      Permite clientes escanearem cardápio, WhatsApp ou site
+                    </div>
                   </div>
+                  <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={showQrCode}
+                      onChange={(e) => setShowQrCode(e.target.checked)}
+                      className="rounded text-sky-600"
+                    />
+                    <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>Ativar QR Code</span>
+                  </label>
+                </div>
 
-                  {qrCodeType === 'generated' ? (
+                {showQrCode && (
+                  <div className="space-y-3 pt-2">
+                    {/* Quick WhatsApp Link Helper */}
+                    <div className={`p-2.5 rounded-xl border flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 ${
+                      isDark ? 'bg-[#152033] border-slate-800' : 'bg-slate-50 border-slate-200'
+                    }`}>
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-[#25D366]">
+                        <WhatsAppIcon className="w-4 h-4 shrink-0" />
+                        <span>Preencher com WhatsApp</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="text"
+                          placeholder="(xx) xxxxx-xxxx"
+                          maxLength={15}
+                          onChange={(e) => {
+                            const formatted = formatWhatsAppPhone(e.target.value);
+                            e.target.value = formatted;
+                            const digits = formatted.replace(/\D/g, '');
+                            if (digits.length >= 10) {
+                              setQrCodeUrl(`https://wa.me/55${digits}`);
+                              setQrCodeType('generated');
+                            }
+                          }}
+                          className={`w-36 px-2.5 py-1 text-xs border rounded-lg font-mono ${
+                            isDark ? 'bg-[#090d16] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                          }`}
+                        />
+                      </div>
+                    </div>
+
                     <div>
-                      <label className="block text-[11px] text-slate-400 mb-1">Link de Destino</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className={`block text-[11px] font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                        Link / URL do QR Code
+                      </label>
+                      {qrCodeUrl && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const u = qrCodeUrl.startsWith('http') ? qrCodeUrl : `https://${qrCodeUrl}`;
+                            window.open(u, '_blank', 'noopener,noreferrer');
+                          }}
+                          className="text-sky-600 dark:text-sky-400 hover:underline text-[11px] font-semibold cursor-pointer inline-flex items-center gap-1"
+                        >
+                          <span>Testar Link</span>
+                        </button>
+                      )}
+                    </div>
+                    <div className="p-0.5">
                       <input
                         type="text"
                         value={qrCodeUrl}
-                        onChange={(e) => setQrCodeUrl(e.target.value)}
-                        placeholder="https://wa.me/5511999999999 ou https://seucardapio.com"
-                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-blue-500 font-mono"
+                        onChange={(e) => {
+                          setQrCodeUrl(e.target.value);
+                          setQrCodeType('generated');
+                        }}
+                        placeholder="https://wa.me/5511... ou https://seusite.com"
+                        className={`w-full px-3 py-2 border rounded-xl text-xs font-mono transition-colors focus:outline-none focus:border-sky-500 ${
+                          isDark ? 'bg-[#0b1120] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                        }`}
                       />
                     </div>
-                  ) : (
-                    <div>
-                      <label className="block text-[11px] text-slate-400 mb-1">Arquivo PNG/JPG do QR</label>
-                      <input
-                        type="file"
-                        ref={qrImageInputRef}
-                        onChange={handleCustomQrFileChange}
-                        accept="image/*"
-                        className="hidden"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => qrImageInputRef.current?.click()}
-                        className="w-full py-2 px-3 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-xl text-xs text-slate-200 transition-colors cursor-pointer"
-                      >
-                        {qrCodeCustomImage ? 'Substituir Imagem do QR Code' : 'Selecionar Arquivo de Imagem'}
-                      </button>
+                    <p className={`text-[10px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      O QR code é gerado em tempo real e redireciona qualquer pessoa que escanear com a câmera.
+                    </p>
                     </div>
-                  )}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    <div>
-                      <label className="block text-[11px] text-slate-400 mb-1">Chamada do QR</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className={`block text-[11px] font-semibold mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                          Legenda do QR Code
+                        </label>
+                        <input
+                          type="text"
+                          value={qrCodeLabel}
+                          onChange={(e) => setQrCodeLabel(e.target.value)}
+                          placeholder="Ex: Peça pelo WhatsApp"
+                          className={`w-full px-3 py-2 border rounded-xl text-xs ${
+                            isDark ? 'bg-[#0b1120] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                          }`}
+                        />
+                      </div>
+                      <div>
+                        <label className={`block text-[11px] font-semibold mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                          Posição na Tela
+                        </label>
+                        <select
+                          value={qrCodePosition}
+                          onChange={(e) => setQrCodePosition(e.target.value as QrCodePosition)}
+                          className={`w-full px-3 py-2 border rounded-xl text-xs ${
+                            isDark ? 'bg-[#0b1120] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                          }`}
+                        >
+                          <option value="bottom-right">Canto Inferior Direito</option>
+                          <option value="bottom-left">Canto Inferior Esquerdo</option>
+                          <option value="top-right">Canto Superior Direito</option>
+                          <option value="top-left">Canto Superior Esquerdo</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB 4: STYLE & HIGHLIGHT */}
+            {activeTab === 'style' && (
+              <div className="space-y-3 pt-1">
+                <div>
+                  <label className={`block text-[11px] font-semibold mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                    Etiqueta de Destaque
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={badgeText}
+                      onChange={(e) => setBadgeText(e.target.value)}
+                      placeholder="Ex: MAIS VENDIDO, PROMOÇÃO, NOVIDADE"
+                      className={`flex-1 px-3 py-2 border rounded-xl text-xs uppercase font-bold ${
+                        isDark ? 'bg-[#0b1120] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                      }`}
+                    />
+                    <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={showOverlayBadge}
+                        onChange={(e) => setShowOverlayBadge(e.target.checked)}
+                        className="rounded text-sky-600"
+                      />
+                      <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>Exibir</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className={`p-3 rounded-2xl border space-y-2.5 ${
+                  isDark ? 'bg-[#0b1120] border-slate-800' : 'bg-slate-50 border-slate-200'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <label className={`block text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                      Selecione Qualquer Cor de Destaque
+                    </label>
+                    <div className="flex items-center gap-2">
                       <input
                         type="text"
-                        value={qrCodeLabel}
-                        onChange={(e) => setQrCodeLabel(e.target.value)}
-                        placeholder="Ex: Peça pelo WhatsApp"
-                        className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-blue-500"
+                        value={accentColor}
+                        onChange={(e) => setAccentColor(e.target.value)}
+                        placeholder="#000000"
+                        maxLength={7}
+                        className={`w-20 px-2 py-0.5 border rounded-lg text-xs font-mono font-bold text-center ${
+                          isDark ? 'bg-[#152033] border-slate-700 text-sky-400' : 'bg-white border-slate-300 text-sky-700'
+                        }`}
+                      />
+                      <input
+                        type="color"
+                        value={accentColor}
+                        onChange={(e) => setAccentColor(e.target.value)}
+                        className="w-8 h-8 rounded-lg cursor-pointer border-0 bg-transparent p-0"
+                        title="Abrir seletor de todas as cores"
                       />
                     </div>
-                    <div>
-                      <label className="block text-[11px] text-slate-400 mb-1">Posição na Tela</label>
-                      <select
-                        value={qrCodePosition}
-                        onChange={(e) => setQrCodePosition(e.target.value as QrCodePosition)}
-                        className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-blue-500"
-                      >
-                        <option value="bottom-right">Canto Inferior Direito</option>
-                        <option value="bottom-left">Canto Inferior Esquerdo</option>
-                        <option value="top-right">Canto Superior Direito</option>
-                        <option value="top-left">Canto Superior Esquerdo</option>
-                      </select>
-                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    {FULL_COLOR_PALETTE.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setAccentColor(c)}
+                        className={`w-6 h-6 rounded-md transition-transform cursor-pointer border border-black/20 ${
+                          accentColor.toLowerCase() === c.toLowerCase()
+                            ? 'ring-2 ring-sky-400 scale-110 shadow-sm'
+                            : 'opacity-85 hover:opacity-100 hover:scale-105'
+                        }`}
+                        style={{ backgroundColor: c }}
+                        title={c}
+                      />
+                    ))}
                   </div>
                 </div>
-              )}
-            </div>
-
-            {/* 5. Identidade da Marca & Duração */}
-            <div className="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-                  <Store className="w-3.5 h-3.5 text-blue-400" />
-                  <span>05. Marca da Empresa no Slide</span>
-                </span>
-                <label className="text-xs font-bold text-slate-300 flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={showBrand}
-                    onChange={(e) => setShowBrand(e.target.checked)}
-                    className="rounded bg-slate-800 border-slate-700 text-blue-600"
-                  />
-                  <span>Exibir Logo e Nome</span>
-                </label>
               </div>
+            )}
 
-              {showBrand && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 border-t border-slate-700/60">
-                  <div>
-                    <label className="block text-[11px] text-slate-400 mb-1">Nome da Empresa</label>
-                    <input
-                      type="text"
-                      value={brandName}
-                      onChange={(e) => setBrandName(e.target.value)}
-                      placeholder="Ex: Minha Empresa"
-                      className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-blue-500 font-bold"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] text-slate-400 mb-1">Slogan ou Subtítulo</label>
-                    <input
-                      type="text"
-                      value={brandSlogan}
-                      onChange={(e) => setBrandSlogan(e.target.value)}
-                      placeholder="Ex: Desde 2018 com o melhor sabor"
-                      className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Tempo de Exibição */}
-              <div className="pt-2 border-t border-slate-700/60 flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-blue-400" />
-                  <span>Tempo de Exibição na TV:</span>
+            {/* Duration & Playlist option */}
+            <div
+              className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                isDark ? 'bg-[#152033] border-slate-800' : 'bg-slate-50 border-slate-200'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className={`text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                  Duração do Slide:
                 </span>
-                <div className="flex items-center gap-1.5">
-                  {[8, 12, 15, 20, 30].map((sec) => (
+                <div className="flex gap-1">
+                  {[8, 12, 15, 20].map((sec) => (
                     <button
                       key={sec}
                       type="button"
                       onClick={() => setDurationSeconds(sec)}
-                      className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
                         durationSeconds === sec
-                          ? 'bg-blue-600 text-white shadow'
-                          : 'bg-slate-900 text-slate-400 hover:text-white'
+                          ? 'bg-sky-600 text-white'
+                          : isDark
+                          ? 'bg-slate-800 text-slate-400 hover:text-white'
+                          : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
                       }`}
                     >
                       {sec}s
@@ -863,70 +966,73 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
                   ))}
                 </div>
               </div>
+
+              <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={addToActivePlaylist}
+                  onChange={(e) => setAddToActivePlaylist(e.target.checked)}
+                  className="rounded text-sky-600"
+                />
+                <span className={isDark ? 'text-slate-200' : 'text-slate-800'}>
+                  Adicionar à grade da TV agora
+                </span>
+              </label>
             </div>
           </div>
 
-          {/* TV Live Preview Column */}
-          <div className={`lg:col-span-5 space-y-4 ${mobileTab === 'edit' ? 'hidden lg:block' : 'block'}`}>
+          {/* Simulator Column */}
+          <div className={`lg:col-span-5 space-y-3 ${mobileTab === 'edit' ? 'hidden lg:block' : 'block'}`}>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                <Eye className="w-3.5 h-3.5 text-blue-400" />
-                <span>Simulador da TV ao Vivo</span>
+              <span className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                Simulador da TV ao Vivo
               </span>
-              <span className="text-[10px] font-bold text-blue-400 bg-blue-500/15 border border-blue-500/30 px-2 py-0.5 rounded-full">
-                16:9 FULL HD
-              </span>
+              <span className="text-[10px] font-mono text-slate-500">16:9 FULL HD</span>
             </div>
 
             {/* Realistic TV Bezel */}
-            <div className="bg-slate-950 rounded-2xl p-3 border-2 border-slate-700 shadow-2xl flex flex-col">
-              <div className="relative aspect-video bg-black rounded-lg overflow-hidden flex flex-col justify-between shadow-inner">
+            <div className="bg-black rounded-xl p-2.5 border border-slate-800 shadow-xl flex flex-col">
+              <div className="relative aspect-video bg-black rounded-lg overflow-hidden flex flex-col justify-between">
                 {imageUrl ? (
                   <img src={imageUrl} alt="Preview" className="absolute inset-0 w-full h-full object-cover" />
                 ) : (
-                  <div className="absolute inset-0 flex items-center justify-center bg-slate-950 text-slate-600 text-xs font-medium">
-                    Selecione uma imagem
+                  <div className="absolute inset-0 flex items-center justify-center bg-slate-900 text-slate-500 text-xs font-medium">
+                    Slide em Branco
                   </div>
                 )}
 
-                {/* Darkness Overlay */}
-                <div
-                  className="absolute inset-0 pointer-events-none transition-opacity"
-                  style={{
-                    backgroundColor: `rgba(0, 0, 0, ${overlayDarkness / 100})`,
-                  }}
-                />
+                {/* Subtle dark gradient for high legibility */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-black/50 pointer-events-none" />
 
-                {/* 1. BRAND ON TV */}
+                {/* 1. BRAND */}
                 {showBrand && (
                   <div
-                    className={`relative z-10 p-2.5 flex items-center gap-2 ${
-                      brandPosition === 'top-right' ? 'justify-end' : 'justify-start'
+                    className={`relative z-10 p-2 flex items-center ${
+                      brandPosition === 'top-right'
+                        ? 'justify-end'
+                        : brandPosition === 'header-bar'
+                        ? 'bg-black/60 border-b border-white/10 w-full justify-between'
+                        : 'justify-start'
                     }`}
                   >
                     <div
-                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl border shadow-lg backdrop-blur-md"
+                      className="flex items-center gap-1.5 px-2 py-1 rounded-md border shadow-sm"
                       style={{
                         backgroundColor: 'rgba(15, 23, 42, 0.85)',
-                        borderColor: `${accentColor}60`,
+                        borderColor: `${accentColor}50`,
                       }}
                     >
                       {brandLogo ? (
-                        <img src={brandLogo} alt="Logo" className="w-5 h-5 object-contain rounded" />
+                        <img src={brandLogo} alt="Logo" className="w-3.5 h-3.5 object-contain rounded" />
                       ) : (
-                        <div
-                          className="w-5 h-5 rounded-full flex items-center justify-center text-white"
-                          style={{ backgroundColor: accentColor }}
-                        >
-                          <Store className="w-3 h-3" />
-                        </div>
+                        <Store className="w-3.5 h-3.5 text-white" />
                       )}
                       <div>
-                        <div className="font-extrabold text-[11px] text-white tracking-wide uppercase leading-tight">
-                          {brandName || companyProfile.name || 'Minha Empresa'}
+                        <div className="font-bold text-[9.5px] text-white tracking-wide uppercase leading-none">
+                          {brandName || companyProfile.name || 'Empório & Café Bella Vista'}
                         </div>
                         {(brandSlogan || companyProfile.slogan) && (
-                          <div className="text-[8px] text-slate-300 font-medium tracking-tight">
+                          <div className="text-[7.5px] text-slate-400 font-medium tracking-tight mt-0.5 leading-none">
                             {brandSlogan || companyProfile.slogan}
                           </div>
                         )}
@@ -935,10 +1041,10 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
                   </div>
                 )}
 
-                {/* 2. QR CODE ON TV */}
+                {/* 2. QR CODE */}
                 {showQrCode && resolvedQrImage && (
                   <div
-                    className={`absolute z-20 p-2.5 ${
+                    className={`absolute z-20 p-2 ${
                       qrCodePosition === 'bottom-right'
                         ? 'bottom-2 right-2'
                         : qrCodePosition === 'bottom-left'
@@ -948,16 +1054,16 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
                         : 'top-2 left-2'
                     }`}
                   >
-                    <div className="bg-white p-1.5 rounded-xl shadow-2xl flex flex-col items-center max-w-[110px] border border-white">
+                    <div className="bg-white p-1 rounded-md shadow-lg flex flex-col items-center max-w-[90px]">
                       <div
                         className={`${
-                          qrCodeSize === 'small' ? 'w-12 h-12' : qrCodeSize === 'medium' ? 'w-16 h-16' : 'w-20 h-20'
+                          qrCodeSize === 'small' ? 'w-10 h-10' : qrCodeSize === 'medium' ? 'w-14 h-14' : 'w-18 h-18'
                         }`}
                       >
                         <img src={resolvedQrImage} alt="QR Code" className="w-full h-full object-contain" />
                       </div>
                       {qrCodeLabel && (
-                        <span className="text-[7.5px] font-extrabold text-slate-900 text-center leading-tight mt-1">
+                        <span className="text-[6.5px] font-bold text-slate-900 text-center leading-tight mt-0.5">
                           {qrCodeLabel}
                         </span>
                       )}
@@ -965,48 +1071,47 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
                   </div>
                 )}
 
-                {/* 3. HEADLINE, BADGE & PRICE */}
-                <div className="relative z-10 p-3 mt-auto">
-                  <div className="max-w-[70%] space-y-1">
+                {/* 3. HEADLINE & PRICE */}
+                <div className="relative z-10 p-2 mt-auto">
+                  <div className="max-w-[75%] space-y-0.5">
                     {showOverlayBadge && badgeText && (
                       <span
-                        className="inline-block px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase text-white shadow-md tracking-wider"
+                        className="inline-block px-1.5 py-0.5 rounded text-[7.5px] font-bold uppercase text-white shadow-xs"
                         style={{ backgroundColor: accentColor }}
                       >
                         {badgeText}
                       </span>
                     )}
 
-                    {headline && (
-                      <h4 className="text-white font-black text-sm sm:text-base leading-tight drop-shadow-md">
+                    {headline ? (
+                      <h4 className="text-white font-extrabold text-xs sm:text-sm leading-tight drop-shadow-md">
                         {headline}
+                      </h4>
+                    ) : (
+                      <h4 className="text-white/60 font-medium text-xs leading-tight">
+                        Título do Slide
                       </h4>
                     )}
 
                     {subheadline && (
-                      <p className="text-slate-200 text-[9px] line-clamp-2 drop-shadow leading-snug">
+                      <p className="text-slate-200 text-[8px] line-clamp-1 drop-shadow-xs">
                         {subheadline}
                       </p>
                     )}
 
                     {showPriceTag && (priceOriginal || pricePromo) && (
-                      <div className="flex items-center gap-2 pt-1">
+                      <div className="flex items-baseline gap-1.5 pt-0.5">
                         {priceOriginal && (
-                          <span className="text-slate-300 text-[10px] line-through font-semibold drop-shadow">
+                          <span className="text-slate-400 text-[8.5px] line-through font-mono">
                             {priceOriginal}
                           </span>
                         )}
                         {pricePromo && (
                           <span
-                            className="text-xs sm:text-sm font-black text-white px-2 py-0.5 rounded-lg shadow-lg"
+                            className="text-[11px] font-extrabold text-white px-1.5 py-0.5 rounded shadow-xs font-mono"
                             style={{ backgroundColor: accentColor }}
                           >
                             {pricePromo}
-                          </span>
-                        )}
-                        {discountBadge && (
-                          <span className="text-[9px] font-extrabold bg-amber-400 text-slate-950 px-1.5 py-0.5 rounded shadow">
-                            {discountBadge}
                           </span>
                         )}
                       </div>
@@ -1015,41 +1120,31 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
                 </div>
               </div>
             </div>
-
-            <div className="p-3 bg-slate-800/80 border border-slate-700 rounded-2xl flex items-center justify-between">
-              <label className="text-xs font-bold text-slate-200 flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={addToActivePlaylist}
-                  onChange={(e) => setAddToActivePlaylist(e.target.checked)}
-                  className="rounded bg-slate-900 border-slate-700 text-blue-600"
-                />
-                <span>Transmitir na TV imediatamente</span>
-              </label>
-              <span className="text-[10px] font-extrabold text-blue-400 bg-blue-500/15 px-2 py-0.5 rounded-full">
-                AO VIVO
-              </span>
-            </div>
           </div>
         </div>
 
         {/* Modal Footer */}
-        <div className="px-5 py-3.5 border-t border-slate-800 bg-slate-900/90 flex items-center justify-between gap-3">
+        <div
+          className={`px-5 py-3 border-t flex items-center justify-between gap-2 ${
+            isDark ? 'border-slate-800 bg-[#0b1120]' : 'border-slate-200 bg-slate-50'
+          }`}
+        >
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 rounded-full text-xs font-semibold text-slate-400 hover:text-white transition-colors cursor-pointer"
+            className={`px-4 py-2 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+              isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+            }`}
           >
             Cancelar
           </button>
-
           <button
             type="button"
             onClick={handleSave}
-            className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-full transition-all cursor-pointer shadow-lg shadow-blue-600/30 active:scale-95"
+            className="flex items-center gap-1.5 px-5 py-2 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-full transition-all cursor-pointer shadow-sm"
           >
-            <Check className="w-4 h-4" />
-            <span>{initialItem ? 'Salvar Alterações' : 'Publicar Slide na TV'}</span>
+            <Check className="w-3.5 h-3.5" />
+            <span>{initialItem ? 'Salvar Alterações' : 'Publicar Slide'}</span>
           </button>
         </div>
       </div>

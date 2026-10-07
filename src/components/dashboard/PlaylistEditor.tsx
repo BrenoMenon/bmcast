@@ -1,35 +1,33 @@
 import React from 'react';
 import {
-  Plus,
   Clock,
+  Plus,
+  Play,
+  Edit3,
   Copy,
   Trash2,
   ChevronUp,
   ChevronDown,
-  Edit3,
   Tv,
 } from 'lucide-react';
-import {
-  Playlist,
-  MediaItem,
-  SlideCategoryType,
-} from '../../types/signage';
+import { Playlist, MediaItem } from '../../types/signage';
+import { useTheme } from '../../context/ThemeContext';
 
 interface PlaylistEditorProps {
   playlist: Playlist;
   mediaList: MediaItem[];
-  onUpdatePlaylist: (updated: Playlist) => void;
+  onUpdatePlaylist: (updatedPlaylist: Playlist) => void;
   onEditSlide: (item: MediaItem) => void;
   onDuplicateSlide: (playlistId: string, itemId: string) => void;
   onCreateNewSlide: () => void;
   onLaunchPlayer: () => void;
 }
 
-const CATEGORY_LABELS: Record<SlideCategoryType, string> = {
+const CATEGORY_LABELS: Record<string, string> = {
   cardapio: 'Cardápio',
-  promo: 'Promoção',
-  aviso: 'Informativo',
-  mural: 'Mural de Fotos',
+  promo: 'Oferta',
+  aviso: 'Comunicado',
+  mural: 'Mural',
 };
 
 export const PlaylistEditor: React.FC<PlaylistEditorProps> = ({
@@ -41,8 +39,11 @@ export const PlaylistEditor: React.FC<PlaylistEditorProps> = ({
   onCreateNewSlide,
   onLaunchPlayer,
 }) => {
-  const totalDurationSeconds = playlist.items.reduce(
-    (acc, cur) => acc + (cur.durationSeconds || 12),
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+
+  const totalSeconds = playlist.items.reduce(
+    (acc, it) => acc + (it.durationSeconds || 12),
     0
   );
 
@@ -50,95 +51,111 @@ export const PlaylistEditor: React.FC<PlaylistEditorProps> = ({
     const mins = Math.floor(sec / 60);
     const remainder = sec % 60;
     if (mins === 0) return `${remainder}s`;
-    return `${mins}m ${remainder > 0 ? `${remainder}s` : ''}`;
-  };
-
-  const handleDurationChange = (itemId: string, duration: number) => {
-    const items = playlist.items.map((i) =>
-      i.id === itemId ? { ...i, durationSeconds: Math.max(3, duration) } : i
-    );
-    onUpdatePlaylist({ ...playlist, items });
+    return `${mins}m ${remainder}s`;
   };
 
   const handleMove = (index: number, direction: 'up' | 'down') => {
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= playlist.items.length) return;
+    const targetIdx = direction === 'up' ? index - 1 : index + 1;
+    if (targetIdx < 0 || targetIdx >= playlist.items.length) return;
 
-    const items = [...playlist.items];
-    const [moved] = items.splice(index, 1);
-    items.splice(targetIndex, 0, moved);
+    const newItems = [...playlist.items];
+    const [moved] = newItems.splice(index, 1);
+    newItems.splice(targetIdx, 0, moved);
 
-    const reordered = items.map((item, idx) => ({ ...item, order: idx }));
+    const reordered = newItems.map((item, idx) => ({ ...item, order: idx }));
     onUpdatePlaylist({ ...playlist, items: reordered });
   };
 
+  const handleDurationChange = (itemId: string, newSeconds: number) => {
+    const valid = Math.max(3, Math.min(300, newSeconds));
+    const newItems = playlist.items.map((it) =>
+      it.id === itemId ? { ...it, durationSeconds: valid } : it
+    );
+    onUpdatePlaylist({ ...playlist, items: newItems });
+  };
+
   const handleRemoveItem = (itemId: string) => {
-    const items = playlist.items.filter((i) => i.id !== itemId);
-    onUpdatePlaylist({ ...playlist, items });
+    const newItems = playlist.items.filter((it) => it.id !== itemId);
+    const reordered = newItems.map((it, idx) => ({ ...it, order: idx }));
+    onUpdatePlaylist({ ...playlist, items: reordered });
   };
 
   return (
     <div className="space-y-4">
-      {/* Action Subheader */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-700/80">
+      {/* Subheader */}
+      <div
+        className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b ${
+          isDark ? 'border-slate-800' : 'border-slate-200'
+        }`}
+      >
         <div>
-          <h2 className="text-sm font-bold text-white tracking-tight uppercase">
-            Grade de Transmissão Ativa na TV
+          <h2 className={`text-sm font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            Grade de Transmissão da TV
           </h2>
-          <div className="text-xs text-slate-400 flex items-center gap-2 mt-1">
-            <span>{playlist.items.length} slides</span>
-            <span className="text-slate-600">·</span>
-            <span>
-              Ciclo total:{' '}
-              <strong className="text-white font-semibold">
-                {formatTotalTime(totalDurationSeconds)}
-              </strong>
-            </span>
-          </div>
+          <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            {playlist.items.length} slides na rotação contínua · Tempo de ciclo total:{' '}
+            <strong className={isDark ? 'text-sky-400' : 'text-sky-700'}>{formatTotalTime(totalSeconds)}</strong>
+          </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <button
             onClick={onCreateNewSlide}
-            className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white text-xs font-bold rounded-full transition-all cursor-pointer shadow-md"
+            className="flex items-center gap-1.5 px-4 py-2 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white text-xs font-bold rounded-full transition-all cursor-pointer shadow-sm"
           >
-            <Plus className="w-4 h-4" />
-            <span>Adicionar Slide</span>
+            <Plus className="w-3.5 h-3.5" />
+            <span>Novo Slide</span>
           </button>
+
           <button
             onClick={onLaunchPlayer}
-            className="flex items-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white text-xs font-semibold rounded-full transition-all cursor-pointer"
+            className={`flex items-center gap-1.5 px-4 py-2 border active:scale-95 text-xs font-bold rounded-full transition-all cursor-pointer ${
+              isDark
+                ? 'bg-[#152033] hover:bg-slate-800 border-slate-700 text-sky-400'
+                : 'bg-slate-900 hover:bg-slate-800 border-slate-900 text-white shadow-xs'
+            }`}
           >
-            <Tv className="w-4 h-4 text-blue-400" />
+            <Play className="w-3.5 h-3.5 fill-current" />
             <span>Ver na TV</span>
           </button>
         </div>
       </div>
 
-      {/* Playlist Items */}
-      <div className="space-y-3">
+      {/* Slide Items List */}
+      <div className="space-y-2.5">
         {playlist.items.length === 0 ? (
-          <div className="p-10 text-center bg-slate-800/40 border border-dashed border-slate-700 rounded-3xl">
-            <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-700 text-blue-400 flex items-center justify-center mx-auto mb-3 shadow-inner">
+          <div
+            className={`p-12 text-center border border-dashed rounded-3xl space-y-3 ${
+              isDark
+                ? 'bg-[#131b2e] border-slate-800 text-slate-400'
+                : 'bg-white border-slate-200 text-slate-500 shadow-xs'
+            }`}
+          >
+            <div className="w-12 h-12 rounded-2xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center mx-auto">
               <Tv className="w-6 h-6" />
             </div>
-            <h3 className="text-sm font-bold text-white">Nenhum slide programado</h3>
-            <p className="text-xs text-slate-400 max-w-sm mx-auto mt-1 mb-4 leading-relaxed">
-              Crie seu primeiro slide com foto, categoria, personalização da marca e QR Code para começar.
-            </p>
-            <button
-              onClick={onCreateNewSlide}
-              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-full transition-all cursor-pointer shadow-md"
-            >
-              Criar Primeiro Slide
-            </button>
+            <div>
+              <h3 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                Nenhum slide programado
+              </h3>
+              <p className="text-xs max-w-sm mx-auto mt-1">
+                Sua programação está limpa. Crie seu primeiro slide personalizado ou adicione itens da biblioteca para exibir na TV.
+              </p>
+            </div>
+            <div className="pt-2">
+              <button
+                onClick={onCreateNewSlide}
+                className="px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-full transition-all cursor-pointer shadow-sm"
+              >
+                Criar Primeiro Slide
+              </button>
+            </div>
           </div>
         ) : (
           playlist.items.map((item, index) => {
             const media = mediaList.find((m) => m.id === item.mediaId);
             const category = media?.category || 'cardapio';
             const catLabel = CATEGORY_LABELS[category] || 'Slide';
-
             const brandCfg = item.brandConfig || media?.brandConfig;
             const qrCfg = item.qrConfig || media?.qrConfig;
             const overlayCfg = item.categoryOverlay || media?.categoryOverlay;
@@ -146,35 +163,39 @@ export const PlaylistEditor: React.FC<PlaylistEditorProps> = ({
             return (
               <div
                 key={item.id}
-                className="bg-slate-800/70 border border-slate-700/80 rounded-2xl p-3.5 sm:p-4 transition-all hover:border-blue-500/40 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm"
+                className={`border rounded-2xl p-3.5 sm:p-4 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs ${
+                  isDark
+                    ? 'bg-[#131b2e] border-slate-800 hover:border-slate-700'
+                    : 'bg-white border-slate-200 hover:border-slate-300'
+                }`}
               >
                 {/* Left: Reorder, Thumbnail, and Info */}
                 <div className="flex items-center gap-3.5 min-w-0">
                   {/* Reorder Arrows */}
-                  <div className="flex flex-col items-center justify-center shrink-0 text-slate-500">
+                  <div className="flex flex-col items-center justify-center shrink-0 text-slate-400">
                     <button
                       onClick={() => handleMove(index, 'up')}
                       disabled={index === 0}
-                      className="p-1 hover:text-white disabled:opacity-20 cursor-pointer transition-colors"
+                      className="p-1 hover:text-sky-500 disabled:opacity-20 cursor-pointer transition-colors"
                       title="Mover para cima"
                     >
-                      <ChevronUp className="w-3.5 h-3.5" />
+                      <ChevronUp className="w-4 h-4" />
                     </button>
-                    <span className="text-xs font-bold text-slate-300">
+                    <span className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                       {index + 1}
                     </span>
                     <button
                       onClick={() => handleMove(index, 'down')}
                       disabled={index === playlist.items.length - 1}
-                      className="p-1 hover:text-white disabled:opacity-20 cursor-pointer transition-colors"
+                      className="p-1 hover:text-sky-500 disabled:opacity-20 cursor-pointer transition-colors"
                       title="Mover para baixo"
                     >
-                      <ChevronDown className="w-3.5 h-3.5" />
+                      <ChevronDown className="w-4 h-4" />
                     </button>
                   </div>
 
                   {/* Thumbnail */}
-                  <div className="relative w-20 h-14 sm:w-24 sm:h-14 bg-black rounded-xl overflow-hidden shrink-0 border border-slate-700">
+                  <div className="relative w-20 h-14 sm:w-24 sm:h-14 bg-black rounded-xl overflow-hidden shrink-0 border border-slate-800">
                     {media?.url ? (
                       <img
                         src={media.thumbnail || media.url}
@@ -182,57 +203,41 @@ export const PlaylistEditor: React.FC<PlaylistEditorProps> = ({
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-slate-900 text-slate-600 text-[10px]">
-                        Sem foto
+                      <div className="w-full h-full bg-slate-900 flex items-center justify-center text-[10px] text-slate-500">
+                        Slide
                       </div>
                     )}
-                    <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded-full bg-black/80 text-[9px] font-bold text-white border border-white/10">
-                      {catLabel}
-                    </span>
                   </div>
 
-                  {/* Titles & Meta */}
-                  <div className="min-w-0 space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="font-bold text-white text-xs sm:text-sm truncate">
-                        {item.customTitle || overlayCfg?.headline || media?.title || 'Slide Sem Título'}
-                      </h4>
+                  {/* Slide Title and Metadata */}
+                  <div className="min-w-0 flex-1">
+                    <h3 className={`font-bold text-xs sm:text-sm truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                      {item.customTitle || media?.title || 'Slide sem título'}
+                    </h3>
 
-                      {overlayCfg?.badgeText && (
-                        <span
-                          className="px-2 py-0.5 rounded-full text-[9px] font-bold text-white tracking-wide uppercase"
-                          style={{ backgroundColor: overlayCfg.accentColor || '#2563EB' }}
-                        >
-                          {overlayCfg.badgeText}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-1.5 text-[11px] text-slate-400 flex-wrap">
-                      <span>{item.durationSeconds || 12}s</span>
-
-                      <span aria-hidden="true" className="text-slate-600">·</span>
-
+                    {/* Metadata */}
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px] text-slate-400 mt-1">
+                      <span className={`font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{catLabel}</span>
+                      <span>·</span>
                       {brandCfg?.showBrand ? (
-                        <span className="text-blue-400 font-medium">Marca: {brandCfg.brandName || 'Ativa'}</span>
+                        <span className="text-sky-600 dark:text-sky-400 font-medium">Marca: {brandCfg.brandName || 'Ativa'}</span>
                       ) : (
                         <span className="text-slate-500">Marca oculta</span>
                       )}
-
-                      <span aria-hidden="true" className="text-slate-600">·</span>
-
+                      <span>·</span>
                       {qrCfg?.showQrCode ? (
-                        <span className="text-sky-300 font-medium">
+                        <span className="text-sky-600 dark:text-sky-400 font-medium">
                           {qrCfg.qrCodeType === 'custom_upload' ? 'QR Real' : 'QR Link'}
                         </span>
                       ) : (
                         <span className="text-slate-500">Sem QR</span>
                       )}
-
                       {overlayCfg?.pricePromo && (
                         <>
-                          <span aria-hidden="true" className="text-slate-600">·</span>
-                          <span className="text-emerald-400 font-bold">{overlayCfg.pricePromo}</span>
+                          <span>·</span>
+                          <span className="text-amber-500 dark:text-amber-400 font-bold font-mono">
+                            {overlayCfg.pricePromo}
+                          </span>
                         </>
                       )}
                     </div>
@@ -240,9 +245,15 @@ export const PlaylistEditor: React.FC<PlaylistEditorProps> = ({
                 </div>
 
                 {/* Right: Duration & Actions */}
-                <div className="flex items-center justify-end gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-slate-700/80">
+                <div className={`flex items-center justify-end gap-2 pt-2 md:pt-0 border-t md:border-t-0 ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
                   {/* Duration input */}
-                  <div className="flex items-center gap-1 bg-slate-900 px-3 py-1.5 rounded-full border border-slate-700 text-xs text-slate-300">
+                  <div
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-full border text-xs ${
+                      isDark
+                        ? 'bg-[#0b1120] border-slate-700 text-slate-300'
+                        : 'bg-slate-50 border-slate-200 text-slate-700'
+                    }`}
+                  >
                     <Clock className="w-3.5 h-3.5 text-slate-400" />
                     <input
                       type="number"
@@ -252,9 +263,9 @@ export const PlaylistEditor: React.FC<PlaylistEditorProps> = ({
                       onChange={(e) =>
                         handleDurationChange(item.id, parseInt(e.target.value) || 12)
                       }
-                      className="w-8 bg-transparent text-center font-bold text-white focus:outline-none"
+                      className={`w-8 bg-transparent text-center font-bold focus:outline-none ${isDark ? 'text-white' : 'text-slate-900'}`}
                     />
-                    <span className="text-[10px] text-slate-500">s</span>
+                    <span className="text-[10px] text-slate-400">s</span>
                   </div>
 
                   {/* Personalizar Slide */}
@@ -270,26 +281,38 @@ export const PlaylistEditor: React.FC<PlaylistEditorProps> = ({
                         });
                       }
                     }}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white rounded-full border border-slate-700 transition-colors cursor-pointer"
+                    className={`flex items-center gap-1.5 px-3.5 py-1.5 border text-xs font-semibold rounded-full transition-colors cursor-pointer ${
+                      isDark
+                        ? 'bg-[#152033] hover:bg-slate-800 border-slate-700 text-slate-200'
+                        : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                    }`}
                     title="Editar Marca, QR Code e Oferta"
                   >
-                    <Edit3 className="w-3.5 h-3.5 text-blue-400" />
+                    <Edit3 className="w-3.5 h-3.5 text-sky-500" />
                     <span>Personalizar</span>
                   </button>
 
                   {/* Duplicar Slide */}
                   <button
                     onClick={() => onDuplicateSlide(playlist.id, item.id)}
-                    className="p-2 bg-slate-800 hover:bg-slate-700 text-white rounded-full border border-slate-700 transition-colors cursor-pointer"
-                    title="Duplicar Slide como nova variação"
+                    className={`p-2 border rounded-full transition-colors cursor-pointer ${
+                      isDark
+                        ? 'bg-[#152033] hover:bg-slate-800 border-slate-700 text-slate-300'
+                        : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                    }`}
+                    title="Duplicar Slide"
                   >
-                    <Copy className="w-3.5 h-3.5 text-blue-400" />
+                    <Copy className="w-3.5 h-3.5 text-sky-500" />
                   </button>
 
                   {/* Remover da Playlist */}
                   <button
                     onClick={() => handleRemoveItem(item.id)}
-                    className="p-2 bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-full border border-slate-700 hover:border-red-500/40 transition-colors cursor-pointer"
+                    className={`p-2 border rounded-full transition-colors cursor-pointer ${
+                      isDark
+                        ? 'bg-[#152033] hover:bg-rose-500/10 border-slate-700 text-slate-400 hover:text-rose-400'
+                        : 'bg-slate-50 hover:bg-rose-50 border-slate-200 text-slate-500 hover:text-rose-600'
+                    }`}
                     title="Remover"
                   >
                     <Trash2 className="w-3.5 h-3.5" />

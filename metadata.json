@@ -1,6 +1,6 @@
 {
-  "name": "BM Cast Pro - Sinalização Digital & Mídia Indoor",
-  "description": "Sistema inovador de TV corporativa, menus digitais e mídia indoor com personalização por slide, previsão do tempo ao vivo via API e QR Code dinâmico.",
+  "name": "BM Cast Pro - Sinalização Digital & TV Corporativa",
+  "description": "Sistema profissional de sinalização digital, TV indoor corporativa, menus interativos, boletim meteorológico ao vivo e letreiros digitais.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -10,47 +10,44 @@ import {
 } from '../types/signage';
 import { weatherService } from './weatherService';
 
-export const DB_CHANGE_EVENT = 'bmcast_db_changed';
+import { supabase } from './supabaseClient';
+
+export const DB_CHANGE_EVENT = 'bmcast_db_changed_v6';
 
 const STORAGE_KEYS = {
-  SCREENS: 'bmcast_screens_clean_v6',
-  MEDIA: 'bmcast_media_clean_v6',
-  PLAYLISTS: 'bmcast_playlists_clean_v6',
-  CONFIG: 'bmcast_config_clean_v6',
-  TICKER: 'bmcast_ticker_clean_v6',
-  WEATHER: 'bmcast_weather_clean_v6',
+  SCREENS: 'bmcast_screens_clean_v6_zero',
+  MEDIA: 'bmcast_media_clean_v6_zero',
+  PLAYLISTS: 'bmcast_playlists_clean_v6_zero',
+  CONFIG: 'bmcast_config_clean_v6_zero',
+  TICKER: 'bmcast_ticker_clean_v6_zero',
+  WEATHER: 'bmcast_weather_clean_v6_zero',
+  ONBOARDING: 'bmcast_onboarding_completed_v6',
 };
 
-// Start 100% blank - no preloaded images or demo pack
-export const DEMO_PRESET_PACK: MediaItem[] = [];
-
 const DEFAULT_BRAND_PROFILE: CompanyBrandProfile = {
-  name: 'Minha Empresa',
-  slogan: 'Comunicação Visual & Mídia Indoor em Alta Resolução',
+  name: '',
+  slogan: '',
   logoUrl: '',
-  accentColor: '#2563EB',
+  accentColor: '#0284c7',
+  secondaryColor: '#0ea5e9',
   phoneWhatsApp: '',
   instagramHandle: '',
   websiteUrl: '',
   defaultQrCodeUrl: '',
-  defaultQrCodeImage: '',
-  businessCategory: 'outro',
-  onboardingCompleted: false,
-  supabaseConnected: false,
 };
 
 const DEFAULT_CONFIG: SystemConfig = {
-  organizationName: 'Minha Empresa',
+  organizationName: '',
   brandProfile: DEFAULT_BRAND_PROFILE,
-  themeAccent: '#2563EB',
+  themeAccent: '#0284c7',
   themeMode: 'dark',
   defaultLayoutMode: 'clean_media',
-  enableSplitMode: true,
+  enableSplitMode: false,
 };
 
 const DEFAULT_TICKER: TickerConfig = {
   enabled: true,
-  text: 'BM Cast • Sistema Corporativo de TV e Mídia Indoor • Personalize seu letreiro pelo painel.',
+  text: 'BM Cast • Sistema de TV Corporativa e Menus Dinâmicos.',
   speed: 'normal',
   accentTitle: 'AVISO AO VIVO',
   presetTopic: 'retail',
@@ -74,7 +71,7 @@ const DEFAULT_WEATHER: WeatherConfig = {
 };
 
 class ResilientDatabase {
-  // Usuário solicitou expressamente: "quero que nao tenha nada cadastrado"
+  // ZERO cadastros prévios - O cliente começa 100% do zero
   private screens: Screen[] = [];
   private media: MediaItem[] = [];
   private playlists: Playlist[] = [];
@@ -92,7 +89,7 @@ class ResilientDatabase {
   private initBroadcast() {
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
       try {
-        this.broadcastChannel = new BroadcastChannel('bmcast_sync_channel');
+        this.broadcastChannel = new BroadcastChannel('bmcast_sync_channel_v6');
         this.broadcastChannel.onmessage = (ev) => {
           if (ev.data && ev.data.type === 'DB_SYNC') {
             this.loadFromStorage();
@@ -100,7 +97,7 @@ class ResilientDatabase {
           }
         };
       } catch (e) {
-        console.warn('BroadcastChannel not available:', e);
+        console.warn('BroadcastChannel não disponível:', e);
       }
     }
   }
@@ -109,14 +106,17 @@ class ResilientDatabase {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent(DB_CHANGE_EVENT));
       if (broadcast && this.broadcastChannel) {
-        this.broadcastChannel.postMessage({ type: 'DB_SYNC', timestamp: Date.now() });
+        try {
+          this.broadcastChannel.postMessage({ type: 'DB_SYNC', timestamp: Date.now() });
+        } catch (e) {
+          console.warn('Erro ao propagar no BroadcastChannel:', e);
+        }
       }
     }
   }
 
   private loadFromStorage() {
     if (typeof window === 'undefined') return;
-
     try {
       const storedScreens = localStorage.getItem(STORAGE_KEYS.SCREENS);
       this.screens = storedScreens ? JSON.parse(storedScreens) : [];
@@ -175,7 +175,7 @@ class ResilientDatabase {
       } catch (err) {
         console.warn('Erro ao atualizar clima inicial:', err);
       }
-    }, 1500);
+    }, 1200);
 
     if (typeof window !== 'undefined') {
       setInterval(async () => {
@@ -234,7 +234,6 @@ class ResilientDatabase {
     }
 
     if (addToActivePlaylist) {
-      // Se não existir playlist ainda, cria a playlist inicial automaticamente
       let activePlaylist = this.playlists[0];
       if (!activePlaylist) {
         activePlaylist = {
@@ -258,6 +257,7 @@ class ResilientDatabase {
         qrConfig: item.qrConfig,
         categoryOverlay: item.categoryOverlay,
       };
+
       activePlaylist.items.push(newItem);
       activePlaylist.updatedAt = new Date().toISOString();
     }
@@ -320,7 +320,6 @@ class ResilientDatabase {
       customTitle: `${item.customTitle || 'Slide'} (Cópia)`,
       order: playlist.items.length,
     };
-
     playlist.items.push(duplicated);
     playlist.updatedAt = new Date().toISOString();
     this.saveToStorage();
@@ -354,56 +353,26 @@ class ResilientDatabase {
     this.saveToStorage();
   }
 
-  // Helper opcional para o usuário carregar exemplos quando quiser
-  loadDemoPack(): void {
-    this.media = DEMO_PRESET_PACK;
-    const defaultItems: PlaylistItem[] = this.media.map((m, idx) => ({
-      id: `item-${m.id}`,
-      mediaId: m.id,
-      durationSeconds: m.durationDefault || 12,
-      order: idx,
-      customTitle: m.title,
-      brandConfig: m.brandConfig,
-      qrConfig: m.qrConfig,
-      categoryOverlay: m.categoryOverlay,
-    }));
-
-    this.playlists = [
-      {
-        id: 'playlist-padrao',
-        name: 'Programação de Exemplo',
-        description: 'Slides de demonstração com Cardápio, Ofertas e QR Code.',
-        items: defaultItems,
-        isDefault: true,
-        updatedAt: new Date().toISOString(),
-      },
-    ];
-
-    this.screens = [
-      {
-        id: 'scr-tv-1',
-        name: 'TV Principal 1',
-        location: 'Salão Principal',
-        slug: 'tv-principal',
-        pairingCode: 'TV-1001',
-        activePlaylistId: 'playlist-padrao',
-        status: 'online',
-        resolution: '1080p',
-        orientation: 'landscape',
-        aspectRatio: '16:9',
-        lastPing: new Date().toISOString(),
-        pairedAt: new Date().toISOString(),
-      },
-    ];
-
-    this.saveToStorage();
-  }
-
   clearAll(): void {
     this.screens = [];
     this.media = [];
     this.playlists = [];
     this.saveToStorage();
+  }
+
+  // Onboarding status
+  isOnboardingCompleted(): boolean {
+    if (typeof window === 'undefined') return true;
+    return localStorage.getItem(STORAGE_KEYS.ONBOARDING) === 'true';
+  }
+
+  setOnboardingCompleted(completed: boolean): void {
+    if (typeof window === 'undefined') return;
+    if (completed) {
+      localStorage.setItem(STORAGE_KEYS.ONBOARDING, 'true');
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.ONBOARDING);
+    }
   }
 }
 

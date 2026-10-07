@@ -88,11 +88,15 @@ export const storageService = {
     db.saveWeather(weather);
   },
 
-  async loadDemoPack(): Promise<void> {
-    db.loadDemoPack();
-  },
-
   async clearAll(): Promise<void> {
     db.clearAll();
+  },
+
+  isOnboardingCompleted(): boolean {
+    return db.isOnboardingCompleted();
+  },
+
+  setOnboardingCompleted(completed: boolean): void {
+    db.setOnboardingCompleted(completed);
   },
 };

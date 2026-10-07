@@ -3,7 +3,7 @@ import { WeatherConfig } from '../types/signage';
 export interface CitySearchResult {
   id: number;
   name: string;
-  admin1?: string; // State / Region
+  admin1?: string;
   country: string;
   country_code: string;
   latitude: number;
@@ -21,46 +21,29 @@ export const POPULAR_CITIES = [
   { name: 'Fortaleza', state: 'CE', lat: -3.7319, lon: -38.5267 },
   { name: 'Goiânia', state: 'GO', lat: -16.6869, lon: -49.2648 },
   { name: 'Campinas', state: 'SP', lat: -22.9056, lon: -47.0608 },
-  { name: 'Santos', state: 'SP', lat: -23.9608, lon: -46.3336 },
   { name: 'Florianópolis', state: 'SC', lat: -27.5954, lon: -48.548 },
   { name: 'Manaus', state: 'AM', lat: -3.119, lon: -60.0217 },
-  { name: 'Recife', state: 'PE', lat: -8.0476, lon: -34.877 },
-  { name: 'Vitória', state: 'ES', lat: -20.3155, lon: -40.3128 },
-  { name: 'Cuiabá', state: 'MT', lat: -15.6014, lon: -56.0979 },
-  { name: 'Belém', state: 'PA', lat: -1.4558, lon: -48.4902 },
 ];
-
-function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) *
-      Math.cos(lat2 * (Math.PI / 180)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
 
 function mapWmoCodeToCondition(code: number): {
   condition: WeatherConfig['condition'];
   text: string;
 } {
   if (code === 0) return { condition: 'sunny', text: 'Céu Limpo' };
-  if (code === 1) return { condition: 'sunny', text: 'Ensolarado' };
+  if (code === 1) return { condition: 'sunny', text: 'Predomínio de Sol' };
   if (code === 2) return { condition: 'partly_cloudy', text: 'Parcialmente Nublado' };
-  if (code === 3) return { condition: 'cloudy', text: 'Nublado' };
+  if (code === 3) return { condition: 'cloudy', text: 'Encoberto' };
   if (code >= 45 && code <= 48) return { condition: 'cloudy', text: 'Nevoeiro' };
-  if (code >= 51 && code <= 55) return { condition: 'rainy', text: 'Garoa' };
+  if (code >= 51 && code <= 55) return { condition: 'rainy', text: 'Garoa / Chuvisco' };
   if (code >= 61 && code <= 65) return { condition: 'rainy', text: 'Chuva Moderada' };
   if (code >= 80 && code <= 82) return { condition: 'rainy', text: 'Pancadas de Chuva' };
-  if (code >= 95 && code <= 99) return { condition: 'storm', text: 'Tempestade com Trovoadas' };
-  return { condition: 'partly_cloudy', text: 'Tempo Agradável' };
+  if (code >= 95 && code <= 99) return { condition: 'storm', text: 'Tempestade com Raios' };
+  return { condition: 'partly_cloudy', text: 'Tempo Firme' };
 }
 
 export const weatherService = {
   /**
-   * Busca cidades na API de Geocoding do Open-Meteo
+   * Busca cidades em tempo real na API de Geocoding do Open-Meteo
    */
   async searchCities(query: string): Promise<CitySearchResult[]> {
     if (!query || query.trim().length < 2) return [];
@@ -73,7 +56,7 @@ export const weatherService = {
       const data = await res.json();
       return (data.results || []) as CitySearchResult[];
     } catch (err) {
-      console.warn('Fallback busca de cidades:', err);
+      console.warn('Erro ao buscar cidades via API:', err);
       const q = query.toLowerCase();
       return POPULAR_CITIES.filter(
         (c) => c.name.toLowerCase().includes(q) || c.state.toLowerCase().includes(q)
@@ -89,52 +72,6 @@ export const weatherService = {
     }
   },
 
-  // Alias for backward compatibility
-  async searchCity(query: string): Promise<CitySearchResult[]> {
-    return this.searchCities(query);
-  },
-
-  /**
-   * Identifica nome da cidade a partir de coordenadas GPS
-   */
-  async reverseGeocode(lat: number, lon: number): Promise<{ city: string; state: string }> {
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`,
-        { headers: { 'Accept-Language': 'pt-BR,pt;q=0.9', 'User-Agent': 'BMCastPro-Signage/1.0' } }
-      );
-      if (res.ok) {
-        const data = await res.json();
-        const address = data.address || {};
-        const cityName =
-          address.city ||
-          address.town ||
-          address.municipality ||
-          address.village ||
-          address.suburb ||
-          '';
-        const stateName = address.state || address.region || '';
-        if (cityName) {
-          return { city: cityName, state: stateName };
-        }
-      }
-    } catch (err) {
-      console.warn('Nominatim reverse geocode indisponível, usando cálculo de aproximação:', err);
-    }
-
-    // Fallback: acha cidade brasileira mais próxima
-    let nearest = POPULAR_CITIES[0];
-    let minDistance = Infinity;
-    for (const c of POPULAR_CITIES) {
-      const dist = calculateDistance(lat, lon, c.lat, c.lon);
-      if (dist < minDistance) {
-        minDistance = dist;
-        nearest = c;
-      }
-    }
-    return { city: nearest.name, state: nearest.state };
-  },
-
   /**
    * Consulta a API de previsão em tempo real do Open-Meteo
    */
@@ -148,7 +85,6 @@ export const weatherService = {
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min&timezone=auto`;
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-
       const data = await res.json();
       const current = data.current || {};
       const daily = data.daily || {};
@@ -186,7 +122,7 @@ export const weatherService = {
         source: 'open_meteo_live',
       };
     } catch (err: any) {
-      console.warn('Falha ao obter clima da API Open-Meteo, usando dados de segurança:', err);
+      console.warn('Falha ao obter clima da API Open-Meteo, usando dados de contingência:', err);
       return {
         autoDetect: false,
         city: cityName,
@@ -197,29 +133,16 @@ export const weatherService = {
         tempMin: 19,
         tempMax: 27,
         condition: 'partly_cloudy',
-        conditionText: 'Tempo Bom',
+        conditionText: 'Tempo Firme',
         humidity: 62,
         windKmH: 14,
         lastFetchedAt: new Date().toISOString(),
         source: 'cached',
-        error: err?.message || 'Estação temporariamente instável',
+        error: err?.message || 'Sem conexão momentânea com a estação',
       };
     }
   },
 
-  // Alias for backward compatibility
-  async fetchRealWeather(
-    lat: number,
-    lon: number,
-    cityName?: string,
-    stateCode?: string
-  ): Promise<WeatherConfig> {
-    return this.fetchLiveWeather(lat, lon, cityName, stateCode);
-  },
-
-  /**
-   * Tenta detectar localização via GPS do navegador
-   */
   async detectBrowserLocation(): Promise<{ lat: number; lon: number } | null> {
     if (typeof window === 'undefined' || !navigator.geolocation) return null;
     return new Promise((resolve) => {
@@ -231,7 +154,7 @@ export const weatherService = {
           });
         },
         () => resolve(null),
-        { timeout: 7000, enableHighAccuracy: true }
+        { timeout: 5000 }
       );
     });
   },

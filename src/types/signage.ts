@@ -2,53 +2,40 @@ export type MediaType = 'image' | 'video' | 'menu_board';
 export type ScreenOrientation = 'landscape' | 'portrait';
 export type ScreenStatus = 'online' | 'offline' | 'idle';
 export type TVLayoutMode = 'clean_media' | 'corporate_split' | 'menu_brand' | 'promo_qr';
-
 export type SlideCategoryType = 'cardapio' | 'promo' | 'aviso' | 'mural';
-
-export type BusinessCategoryType =
-  | 'lanchonete'
-  | 'loja'
-  | 'clinica'
-  | 'barbearia'
-  | 'academia'
-  | 'corporativo'
-  | 'outro';
-
 export type QrCodePosition = 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left' | 'center-right';
 export type QrCodeSize = 'small' | 'medium' | 'large';
 export type BrandPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'header-bar';
 
 export interface CategoryOverlayConfig {
-  badgeText?: string;          // Ex: "SUPER PROMOÇÃO", "CARDÁPIO DO CHEF", "AVISO IMPORTANTE", "DESTAQUE"
-  headline?: string;           // Ex: "Hambúrguer Artesanal Smash Duplo"
-  subheadline?: string;        // Ex: "Acompanha batata rústica e refrigerante lata"
-  priceOriginal?: string;      // Ex: "R$ 44,90"
-  pricePromo?: string;         // Ex: "R$ 29,90"
-  accentColor?: string;        // Ex: "#2563EB", "#059669", "#D97706", etc.
-  showOverlayBadge?: boolean;  // Exibe a etiqueta de destaque
-  showPriceTag?: boolean;      // Exibe a caixa de preços
+  badgeText?: string;          // Ex: "DESTAQUE DA SEMANA", "CARDÁPIO ESPECIAL", "COMUNICADO"
+  headline?: string;           // Ex: "Café Gourmet Especial & Croissant"
+  subheadline?: string;        // Ex: "Grãos selecionados com torra artesanal média"
+  priceOriginal?: string;      // Ex: "R$ 28,00"
+  pricePromo?: string;         // Ex: "R$ 19,90"
+  accentColor?: string;        // Ex: "#0d9488", "#2563EB", "#dc2626"
+  showOverlayBadge?: boolean;
+  showPriceTag?: boolean;
   position?: 'bottom' | 'top' | 'left' | 'right';
-  overlayOpacity?: number;     // 0 a 100% de escurecimento do fundo
-  discountPercent?: string;    // Ex: "25% OFF"
   extraItems?: { label: string; value: string }[];
 }
 
 export interface SlideBrandConfig {
-  showBrand: boolean;          // O usuário pode escolher mostrar a marca ou não
-  brandName?: string;          // Nome personalizado da empresa para o slide (ou usa padrão)
-  brandSlogan?: string;        // Slogan / descrição para o slide
-  brandLogo?: string;          // Imagem/URL do logo da empresa para o slide
+  showBrand: boolean;
+  brandName?: string;
+  brandSlogan?: string;
+  brandLogo?: string;
   brandPosition?: BrandPosition;
   accentColor?: string;
-  badgeText?: string;          // Ex: "LANÇAMENTO EXCLUSIVO"
+  badgeText?: string;
 }
 
 export interface SlideQrCodeConfig {
-  showQrCode: boolean;         // O usuário pode escolher mostrar o QR code ou não
-  qrCodeType: 'generated' | 'custom_upload'; // Gera dinâmico pelo link ou usuário sobe imagem de QR code verdadeiro
-  qrCodeUrl?: string;          // Link para gerar (ex: WhatsApp, Pix, Cardápio, Instagram)
-  qrCodeCustomImage?: string;  // Imagem real do QR Code que o usuário enviou
-  qrCodeLabel?: string;        // Ex: "Peça pelo WhatsApp", "Pague no PIX", "Acesse o Menu"
+  showQrCode: boolean;
+  qrCodeType: 'generated' | 'custom_upload';
+  qrCodeUrl?: string;
+  qrCodeCustomImage?: string;
+  qrCodeLabel?: string;
   qrCodePosition: QrCodePosition;
   qrCodeSize: QrCodeSize;
 }
@@ -64,7 +51,6 @@ export interface MediaItem {
   createdAt: string;
   fileSize?: string;
   dimensions?: string;
-  // Customizações salvas no modelo do slide:
   brandConfig?: SlideBrandConfig;
   qrConfig?: SlideQrCodeConfig;
   categoryOverlay?: CategoryOverlayConfig;
@@ -76,7 +62,6 @@ export interface PlaylistItem {
   durationSeconds: number;
   order: number;
   customTitle?: string;
-  // Overrides específicos por slide na playlist:
   brandConfig?: SlideBrandConfig;
   qrConfig?: SlideQrCodeConfig;
   categoryOverlay?: CategoryOverlayConfig;
@@ -86,7 +71,7 @@ export interface Playlist {
   id: string;
   name: string;
   description: string;
-  screenId?: string; // Target screen or 'all'
+  screenId?: string;
   items: PlaylistItem[];
   isDefault?: boolean;
   updatedAt: string;
@@ -97,7 +82,7 @@ export interface Screen {
   name: string;
   location: string;
   slug: string;
-  pairingCode: string; // Ex: "BM-4921" para pareamento instantâneo
+  pairingCode: string;
   activePlaylistId: string;
   status: ScreenStatus;
   resolution: '1080p' | '4K' | '720p';
@@ -143,17 +128,12 @@ export interface CompanyBrandProfile {
   slogan: string;
   logoUrl: string;
   accentColor: string;
-  primaryColor?: string;
+  secondaryColor?: string;
   phoneWhatsApp?: string;
   instagramHandle?: string;
   websiteUrl?: string;
   defaultQrCodeImage?: string;
   defaultQrCodeUrl?: string;
-  businessCategory?: BusinessCategoryType;
-  onboardingCompleted?: boolean;
-  supabaseUrl?: string;
-  supabaseAnonKey?: string;
-  supabaseConnected?: boolean;
 }
 
 export interface SystemConfig {
@@ -163,6 +143,8 @@ export interface SystemConfig {
   themeMode: 'dark' | 'light';
   defaultLayoutMode: TVLayoutMode;
   enableSplitMode: boolean;
+  supabaseUrl?: string;
+  supabaseAnonKey?: string;
 }
 
 export interface LocalDBState {

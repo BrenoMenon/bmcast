@@ -1,138 +1,45 @@
 @import "tailwindcss";
 
+@variant dark (&:where(.dark, .dark *));
+
 @layer base {
-  :root,
-  html.dark {
-    --background: #0f172a;
-    --foreground: #f8fafc;
-    --card: #1e293b;
-    --card-foreground: #f8fafc;
-    --popover: #1e293b;
-    --popover-foreground: #f8fafc;
-    --primary: #3b82f6;
-    --primary-foreground: #ffffff;
-    --secondary: #1e293b;
-    --secondary-foreground: #f8fafc;
-    --muted: #1e293b;
-    --muted-foreground: #94a3b8;
-    --accent: #3b82f6;
-    --accent-foreground: #ffffff;
-    --destructive: #ef4444;
-    --destructive-foreground: #ffffff;
-    --border: #334155;
-    --input: #0f172a;
-    --ring: #3b82f6;
-    --radius: 1rem;
-    --gradient-brand: linear-gradient(135deg, #60a5fa 0%, #2563eb 100%);
-    color-scheme: dark;
+  :root {
+    --primary: #0284c7;
+    --primary-hover: #0369a1;
+    --font-sans: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
 
-  html.light {
-    --background: #f8fafc;
-    --foreground: #0f172a;
-    --card: #ffffff;
-    --card-foreground: #0f172a;
-    --popover: #ffffff;
-    --popover-foreground: #0f172a;
-    --primary: #2563eb;
-    --primary-foreground: #ffffff;
-    --secondary: #f1f5f9;
-    --secondary-foreground: #0f172a;
-    --muted: #f1f5f9;
-    --muted-foreground: #64748b;
-    --accent: #2563eb;
-    --accent-foreground: #ffffff;
-    --destructive: #ef4444;
-    --destructive-foreground: #ffffff;
-    --border: #e2e8f0;
-    --input: #ffffff;
-    --ring: #2563eb;
-    --radius: 1rem;
-    --gradient-brand: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-    color-scheme: light;
-  }
-
-  * {
-    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  html {
+    font-family: var(--font-sans);
   }
 
   body {
-    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background-color: var(--background);
-    color: var(--foreground);
+    font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     margin: 0;
     padding: 0;
     overflow-x: hidden;
-    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+
+  /* Garante que inputs e cards nunca cortem a borda ou vazem do layout */
+  *, ::before, ::after {
+    box-sizing: border-box;
   }
 
   input, select, textarea, button {
     font-family: inherit;
+    box-sizing: border-box;
+    max-width: 100%;
+  }
+
+  /* Previne que o foco corte nos limites do container ou vaze pedaços */
+  input:focus, select:focus, textarea:focus {
+    outline-offset: 1px;
   }
 }
 
-/* Rounded Blue & White Button Utilities */
-.btn-rounded-primary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  border-radius: 9999px;
-  background-color: #2563eb;
-  color: #ffffff;
-  font-weight: 700;
-  font-size: 0.875rem;
-  padding: 0.625rem 1.35rem;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 14px -2px rgba(37, 99, 235, 0.4);
-  cursor: pointer;
-}
-
-.btn-rounded-primary:hover {
-  background-color: #1d4ed8;
-  box-shadow: 0 6px 20px -2px rgba(37, 99, 235, 0.55);
-}
-
-.btn-rounded-primary:active {
-  transform: scale(0.97);
-}
-
-.btn-rounded-secondary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  border-radius: 9999px;
-  background-color: var(--secondary);
-  border: 1px solid var(--border);
-  color: var(--foreground);
-  font-weight: 600;
-  font-size: 0.875rem;
-  padding: 0.5rem 1.15rem;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  cursor: pointer;
-}
-
-.btn-rounded-secondary:hover {
-  opacity: 0.9;
-  border-color: #3b82f6;
-}
-
-.btn-rounded-secondary:active {
-  transform: scale(0.97);
-}
-
-/* Gradient text */
-.bl-gradient-text {
-  background: var(--gradient-brand);
-  color: transparent;
-  -webkit-background-clip: text;
-  background-clip: text;
-}
-
-/* Marquee animation for bottom TV ticker */
+/* Animação do Letreiro da TV */
 @keyframes marquee {
   0% {
     transform: translateX(100%);
@@ -154,7 +61,7 @@
   animation: marquee 20s linear infinite;
 }
 
-/* Sleek minimalist scrollbar */
+/* Scrollbar refinada */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -165,19 +72,10 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: rgba(148, 163, 184, 0.35);
   border-radius: 9999px;
 }
 
-html.light ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-}
-
 ::-webkit-scrollbar-thumb:hover {
-  background: #3b82f6;
-}
-
-/* TV Player Overlay text shadow */
-.tv-text-shadow {
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.85), 0 4px 20px rgba(0, 0, 0, 0.6);
+  background: rgba(148, 163, 184, 0.6);
 }

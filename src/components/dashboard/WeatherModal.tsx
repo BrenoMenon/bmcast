@@ -1,28 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   X,
-  CloudSun,
   Search,
-  MapPin,
-  Compass,
   Check,
   RefreshCw,
+  MapPin,
   Wind,
   Droplets,
+  Compass,
 } from 'lucide-react';
 import { WeatherConfig } from '../../types/signage';
-import {
-  weatherService,
-  CitySearchResult,
-  POPULAR_CITIES,
-} from '../../services/weatherService';
+import { weatherService, POPULAR_CITIES, CitySearchResult } from '../../services/weatherService';
+import { useTheme } from '../../context/ThemeContext';
 
 interface WeatherModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentWeather: WeatherConfig;
-  onSave?: (updated: WeatherConfig) => void;
-  onSaveWeather?: (updated: WeatherConfig) => void;
+  onSave: (weather: WeatherConfig) => void;
 }
 
 export const WeatherModal: React.FC<WeatherModalProps> = ({
@@ -30,154 +25,122 @@ export const WeatherModal: React.FC<WeatherModalProps> = ({
   onClose,
   currentWeather,
   onSave,
-  onSaveWeather,
 }) => {
-  const [selectedWeather, setSelectedWeather] = useState<WeatherConfig>(currentWeather);
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<CitySearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isLoadingWeather, setIsLoadingWeather] = useState(false);
-  const [gpsStatusMsg, setGpsStatusMsg] = useState<string | null>(null);
+  const [selectedWeather, setSelectedWeather] = useState<WeatherConfig>(currentWeather);
 
-  useEffect(() => {
-    if (isOpen) {
-      setSelectedWeather(currentWeather);
-      setSearchQuery('');
-      setSearchResults([]);
-      setGpsStatusMsg(null);
-    }
-  }, [isOpen, currentWeather]);
+  if (!isOpen) return null;
 
-  // Debounced search
-  useEffect(() => {
-    if (!searchQuery || searchQuery.trim().length < 2) {
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query);
+    if (query.trim().length < 2) {
       setSearchResults([]);
       return;
     }
-
-    const timer = setTimeout(async () => {
-      setIsSearching(true);
-      try {
-        const results = await weatherService.searchCities(searchQuery);
-        setSearchResults(results);
-      } catch (err) {
-        console.error('Erro ao buscar cidades:', err);
-      } finally {
-        setIsSearching(false);
-      }
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
+    setIsSearching(true);
+    try {
+      const results = await weatherService.searchCities(query);
+      setSearchResults(results);
+    } catch (e) {
+      console.warn('Erro ao pesquisar:', e);
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   const handleSelectCity = async (
-    name: string,
+    cityName: string,
     stateCode: string,
     lat: number,
     lon: number
   ) => {
     setIsLoadingWeather(true);
-    setSearchResults([]);
-    setSearchQuery('');
-    setGpsStatusMsg(null);
     try {
-      const freshData = await weatherService.fetchLiveWeather(lat, lon, name, stateCode);
-      setSelectedWeather(freshData);
-    } catch (err) {
-      console.error('Erro ao buscar clima da cidade:', err);
+      const live = await weatherService.fetchLiveWeather(lat, lon, cityName, stateCode);
+      setSelectedWeather(live);
+      setSearchResults([]);
+      setSearchQuery('');
+    } catch (e) {
+      console.error('Erro ao buscar dados da cidade:', e);
     } finally {
       setIsLoadingWeather(false);
     }
   };
 
-  const handleDetectGPS = () => {
-    if (typeof window === 'undefined' || !navigator.geolocation) {
-      setGpsStatusMsg('Geolocalização não é suportada pelo seu navegador.');
-      return;
-    }
-
+  const handleDetectGPS = async () => {
     setIsLoadingWeather(true);
-    setGpsStatusMsg('Detectando sua localização via GPS...');
-
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          const lat = pos.coords.latitude;
-          const lon = pos.coords.longitude;
-          const { city, state } = await weatherService.reverseGeocode(lat, lon);
-          const freshData = await weatherService.fetchLiveWeather(
-            lat,
-            lon,
-            city || 'Minha Localização',
-            state || ''
-          );
-          setSelectedWeather(freshData);
-          setGpsStatusMsg(`Localizado com sucesso: ${city || 'Coordenadas locais'}`);
-        } catch (err) {
-          console.error('Erro clima GPS:', err);
-          setGpsStatusMsg('Erro ao obter dados do clima para as coordenadas.');
-        } finally {
-          setIsLoadingWeather(false);
-        }
-      },
-      (err) => {
-        console.warn('GPS negado ou indisponível:', err);
-        setIsLoadingWeather(false);
-        setGpsStatusMsg('Permissão de GPS não concedida. Selecione uma cidade na lista.');
-      },
-      { timeout: 9000, enableHighAccuracy: true }
-    );
+    try {
+      const coords = await weatherService.detectBrowserLocation();
+      if (coords) {
+        const live = await weatherService.fetchLiveWeather(
+          coords.lat,
+          coords.lon,
+          'Local Atual',
+          'GPS'
+        );
+        setSelectedWeather(live);
+      }
+    } catch (e) {
+      console.warn('GPS não acessível:', e);
+    } finally {
+      setIsLoadingWeather(false);
+    }
   };
 
   const handleRefreshCurrent = async () => {
     setIsLoadingWeather(true);
-    setGpsStatusMsg(null);
     try {
-      const fresh = await weatherService.fetchLiveWeather(
+      const live = await weatherService.fetchLiveWeather(
         selectedWeather.latitude,
         selectedWeather.longitude,
         selectedWeather.city,
         selectedWeather.stateCode
       );
-      setSelectedWeather(fresh);
-    } catch (err) {
-      console.error('Erro ao atualizar clima:', err);
+      setSelectedWeather(live);
     } finally {
       setIsLoadingWeather(false);
     }
   };
 
   const handleConfirm = () => {
-    (onSave || onSaveWeather)?.(selectedWeather);
+    onSave(selectedWeather);
     onClose();
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
-      <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-700/80 rounded-3xl shadow-2xl p-4 sm:p-6 overflow-hidden max-h-[92vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+      <div
+        className={`relative w-full max-w-lg rounded-2xl p-6 overflow-hidden max-h-[92vh] flex flex-col shadow-2xl border transition-colors ${
+          isDark
+            ? 'bg-[#0f172a] border-slate-800 text-white'
+            : 'bg-white border-slate-200 text-slate-900'
+        }`}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between pb-3.5 border-b border-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-blue-600/20 text-blue-400 border border-blue-500/40 flex items-center justify-center shrink-0">
-              <CloudSun className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-white flex items-center gap-2 tracking-tight">
-                Previsão do Tempo Oficial
-                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-blue-500/15 text-blue-300 border border-blue-500/30">
-                  Open-Meteo API
-                </span>
-              </h2>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                Dados meteorológicos em tempo real com atualização automática na TV
-              </p>
-            </div>
+        <div
+          className={`flex items-center justify-between pb-3.5 border-b ${
+            isDark ? 'border-slate-800' : 'border-slate-200'
+          }`}
+        >
+          <div>
+            <h2 className={`text-base font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              Previsão do Tempo na TV
+            </h2>
+            <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              Atualização automática em tempo real via Open-Meteo
+            </p>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition-colors cursor-pointer"
+            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+              isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+            }`}
           >
             <X className="w-5 h-5" />
           </button>
@@ -186,22 +149,32 @@ export const WeatherModal: React.FC<WeatherModalProps> = ({
         {/* Scrollable Body */}
         <div className="flex-1 overflow-y-auto py-4 space-y-4">
           {/* Live Weather Preview Card */}
-          <div className="p-4 sm:p-5 rounded-2xl bg-slate-950 border border-slate-700 shadow-sm relative overflow-hidden">
+          <div
+            className={`p-4 sm:p-5 rounded-2xl border relative overflow-hidden transition-colors ${
+              isDark
+                ? 'bg-[#0b1120] border-slate-800'
+                : 'bg-slate-50 border-slate-200 shadow-xs'
+            }`}
+          >
             <div className="absolute top-3 right-3 flex items-center gap-2">
               <button
                 onClick={handleRefreshCurrent}
                 disabled={isLoadingWeather}
-                className="px-3.5 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs flex items-center gap-1.5 transition-colors cursor-pointer border border-slate-700"
+                className={`px-3 py-1.5 rounded-full border text-xs flex items-center gap-1.5 transition-colors cursor-pointer ${
+                  isDark
+                    ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                    : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300 shadow-xs'
+                }`}
                 title="Atualizar agora via API"
               >
-                <RefreshCw className={`w-3.5 h-3.5 text-blue-400 ${isLoadingWeather ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-3.5 h-3.5 ${isLoadingWeather ? 'animate-spin' : ''}`} />
                 <span>Atualizar</span>
               </button>
             </div>
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <div className="flex items-center gap-1.5 text-blue-400 font-bold text-sm">
+                <div className="flex items-center gap-1.5 text-sky-600 dark:text-sky-400 font-bold text-sm">
                   <MapPin className="w-4 h-4" />
                   <span>
                     {selectedWeather.city}
@@ -209,48 +182,44 @@ export const WeatherModal: React.FC<WeatherModalProps> = ({
                   </span>
                 </div>
                 <div className="mt-2 flex items-baseline gap-3">
-                  <span className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight">
+                  <span className={`text-4xl sm:text-5xl font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
                     {selectedWeather.temp}°C
                   </span>
-                  <span className="text-sm font-semibold text-slate-300">
+                  <span className={`text-sm font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                     {selectedWeather.conditionText}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 mt-1 text-xs text-slate-400">
                   <span>Mín: {selectedWeather.tempMin}°C</span>
-                  <span className="text-slate-600">•</span>
+                  <span>•</span>
                   <span>Máx: {selectedWeather.tempMax}°C</span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 bg-slate-900 p-3.5 rounded-2xl border border-slate-800 text-xs">
-                <div className="flex items-center gap-2 text-slate-300">
-                  <Droplets className="w-4 h-4 text-sky-400 shrink-0" />
+              <div
+                className={`grid grid-cols-2 gap-3 p-3 rounded-xl border text-xs ${
+                  isDark ? 'bg-[#152033] border-slate-800' : 'bg-white border-slate-200'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Droplets className="w-4 h-4 text-sky-500 shrink-0" />
                   <div>
-                    <div className="text-[10px] text-slate-400 font-medium">Umidade</div>
-                    <div className="font-bold text-white">{selectedWeather.humidity}%</div>
+                    <div className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Umidade</div>
+                    <div className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{selectedWeather.humidity}%</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-slate-300">
-                  <Wind className="w-4 h-4 text-blue-400 shrink-0" />
+                <div className="flex items-center gap-2">
+                  <Wind className="w-4 h-4 text-sky-500 shrink-0" />
                   <div>
-                    <div className="text-[10px] text-slate-400 font-medium">Vento</div>
-                    <div className="font-bold text-white">{selectedWeather.windKmH} km/h</div>
+                    <div className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Vento</div>
+                    <div className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{selectedWeather.windKmH} km/h</div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* GPS Feedback notification if active */}
-          {gpsStatusMsg && (
-            <div className="p-3 rounded-2xl bg-blue-950/40 border border-blue-500/30 text-xs text-blue-200 flex items-center gap-2">
-              <Compass className="w-4 h-4 text-blue-400 shrink-0 animate-pulse" />
-              <span>{gpsStatusMsg}</span>
-            </div>
-          )}
-
-          {/* Search City Input & GPS button */}
+          {/* Search City Input */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
@@ -258,30 +227,41 @@ export const WeatherModal: React.FC<WeatherModalProps> = ({
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Digite o nome de qualquer cidade (ex: Curitiba, Campinas, Santos)..."
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-700 rounded-full text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
+                  onChange={(e) => handleSearch(e.target.value)}
+                  placeholder="Buscar cidade (ex: Curitiba, Campinas, Santos)..."
+                  className={`w-full pl-10 pr-4 py-2.5 border rounded-full text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500/30 ${
+                    isDark
+                      ? 'bg-[#0b1120] border-slate-700 text-white placeholder-slate-500 focus:border-sky-500'
+                      : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:border-sky-600'
+                  }`}
                 />
                 {isSearching && (
                   <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
-                    <RefreshCw className="w-4 h-4 text-blue-400 animate-spin" />
+                    <RefreshCw className="w-4 h-4 text-sky-500 animate-spin" />
                   </div>
                 )}
               </div>
               <button
                 type="button"
                 onClick={handleDetectGPS}
-                disabled={isLoadingWeather}
-                className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-full text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 shadow-sm disabled:opacity-50"
+                className={`px-4 py-2.5 border rounded-full text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 ${
+                  isDark
+                    ? 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200'
+                    : 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-800'
+                }`}
               >
-                <Compass className="w-4 h-4" />
-                <span>Usar GPS</span>
+                <Compass className="w-4 h-4 text-sky-500" />
+                <span>GPS</span>
               </button>
             </div>
 
             {/* Search Dropdown Results */}
             {searchResults.length > 0 && (
-              <div className="max-h-48 overflow-y-auto bg-slate-950 border border-slate-700 rounded-2xl divide-y divide-slate-800 shadow-xl">
+              <div
+                className={`max-h-48 overflow-y-auto border rounded-2xl divide-y shadow-xl ${
+                  isDark ? 'bg-[#0b1120] border-slate-800 divide-slate-800' : 'bg-white border-slate-200 divide-slate-100'
+                }`}
+              >
                 {searchResults.map((city) => (
                   <div
                     key={`${city.id}-${city.name}`}
@@ -293,16 +273,18 @@ export const WeatherModal: React.FC<WeatherModalProps> = ({
                         city.longitude
                       )
                     }
-                    className="p-3 hover:bg-slate-900 cursor-pointer flex items-center justify-between text-xs text-slate-200 transition-colors"
+                    className={`p-3 cursor-pointer flex items-center justify-between text-xs transition-colors ${
+                      isDark ? 'hover:bg-slate-800 text-slate-200' : 'hover:bg-slate-50 text-slate-800'
+                    }`}
                   >
                     <div className="flex items-center gap-2">
-                      <MapPin className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                      <span className="font-semibold text-white">{city.name}</span>
+                      <MapPin className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                      <span className="font-semibold">{city.name}</span>
                       <span className="text-slate-400">
                         {city.admin1 ? `(${city.admin1})` : ''} - {city.country}
                       </span>
                     </div>
-                    <span className="text-blue-400 font-semibold text-[11px]">Selecionar</span>
+                    <span className="text-sky-600 dark:text-sky-400 font-semibold text-[11px]">Selecionar</span>
                   </div>
                 ))}
               </div>
@@ -310,7 +292,7 @@ export const WeatherModal: React.FC<WeatherModalProps> = ({
 
             {/* Quick Popular Cities */}
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-2">
+              <label className={`block text-xs font-semibold mb-2 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                 Capitais e Cidades Populares:
               </label>
               <div className="flex flex-wrap gap-2">
@@ -321,8 +303,10 @@ export const WeatherModal: React.FC<WeatherModalProps> = ({
                     onClick={() => handleSelectCity(c.name, c.state, c.lat, c.lon)}
                     className={`px-3.5 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer ${
                       selectedWeather.city === c.name
-                        ? 'bg-blue-600 text-white border-blue-500 font-bold shadow-sm'
-                        : 'bg-slate-800 border-slate-700 text-slate-300 hover:text-white hover:border-blue-500/50'
+                        ? 'bg-sky-600 text-white border-sky-600 font-bold shadow-xs'
+                        : isDark
+                        ? 'bg-[#152033] border-slate-700 text-slate-300 hover:border-slate-500'
+                        : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
                     }`}
                   >
                     {c.name} ({c.state})
@@ -334,20 +318,26 @@ export const WeatherModal: React.FC<WeatherModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="pt-3.5 border-t border-slate-800 flex items-center justify-between gap-3">
-          <span className="text-[11px] text-slate-400 truncate">
+        <div
+          className={`pt-3.5 border-t flex items-center justify-between gap-3 ${
+            isDark ? 'border-slate-800' : 'border-slate-200'
+          }`}
+        >
+          <span className={`text-[11px] truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
             Última checagem: {new Date(selectedWeather.lastFetchedAt).toLocaleTimeString('pt-BR')}
           </span>
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-white rounded-full transition-colors cursor-pointer"
+              className={`px-4 py-2 text-xs font-medium rounded-full transition-colors cursor-pointer ${
+                isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+              }`}
             >
               Cancelar
             </button>
             <button
               onClick={handleConfirm}
-              className="flex items-center gap-1.5 px-5 py-2 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white text-xs font-bold rounded-full transition-all cursor-pointer shadow-md"
+              className="flex items-center gap-1.5 px-5 py-2 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white text-xs font-bold rounded-full transition-all cursor-pointer shadow-sm"
             >
               <Check className="w-3.5 h-3.5" />
               <span>Aplicar na TV</span>

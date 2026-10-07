@@ -1,225 +1,249 @@
 import React, { useState } from 'react';
 import {
   X,
+  ArrowRight,
+  ArrowLeft,
   Tv,
-  Image as ImageIcon,
-  QrCode,
-  CloudSun,
+  Store,
+  Layers,
   Radio,
-  CheckCircle2,
   ExternalLink,
-  ChevronRight,
-  ChevronLeft,
-  Sparkles,
 } from 'lucide-react';
+import { useTheme } from '../../context/ThemeContext';
 
 interface TutorialModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onOpenCreateSlide?: () => void;
-  onOpenConnectTV?: () => void;
+  onOpenBrand: () => void;
+  onOpenNewScreen: () => void;
+  onOpenNewSlide: () => void;
+  onOpenTicker: () => void;
+  onOpenWeather: () => void;
 }
+
+const TUTORIAL_STEPS = [
+  {
+    step: 1,
+    title: '1. Identidade & Logotipo da Empresa',
+    subtitle: 'Comece definindo a cara do seu estabelecimento',
+    icon: Store,
+    badge: 'Passo 1 de 5',
+    content:
+      'No menu "Marca", suba o logotipo do seu estabelecimento. O sistema extrai automaticamente as 2 cores oficiais da sua marca! Adicione também seu WhatsApp e o link padrão do QR Code que aparecerá nas TVs.',
+    actionLabel: 'Abrir Configurações de Marca',
+    actionType: 'brand' as const,
+  },
+  {
+    step: 2,
+    title: '2. Cadastre sua Primeira TV ou Monitor',
+    subtitle: 'Identifique onde seus clientes irão assistir',
+    icon: Tv,
+    badge: 'Passo 2 de 5',
+    content:
+      'Na aba "Monitores & Telas", cadastre sua tela (ex: "TV Salão", "Menu Balcão"). Escolha a orientação: 16:9 Horizontal ou 9:16 Vertical (totem). O sistema gera um link exclusivo e um código de pareamento para o seu aparelho.',
+    actionLabel: 'Cadastrar Minha TV',
+    actionType: 'screen' as const,
+  },
+  {
+    step: 3,
+    title: '3. Crie e Personalize seus Slides',
+    subtitle: 'Cardápios, promoções, avisos e fotos reais',
+    icon: Layers,
+    badge: 'Passo 3 de 5',
+    content:
+      'Clique em "+ Criar Slide" para subir fotos dos seus produtos ou colar URLs diretas de imagens. Defina o título, valor promocional (ex: R$ 29,90) e ative o QR Code que leva direto para seu WhatsApp ou site.',
+    actionLabel: 'Criar Meu Primeiro Slide',
+    actionType: 'slide' as const,
+  },
+  {
+    step: 4,
+    title: '4. Letreiro Rolante & Previsão do Tempo',
+    subtitle: 'Informações ao vivo na parte inferior da TV',
+    icon: Radio,
+    badge: 'Passo 4 de 5',
+    content:
+      'Personalize o letreiro inferior da TV com avisos rápidos (ex: "Peça pelo WhatsApp • Aceitamos Pix"). Clique também na temperatura no topo para selecionar sua cidade exata e exibir o clima atualizado ao vivo.',
+    actionLabel: 'Configurar Letreiro',
+    actionType: 'ticker' as const,
+  },
+  {
+    step: 5,
+    title: '5. Como Transmitir na sua Smart TV',
+    subtitle: 'Pronto para colocar no ar!',
+    icon: ExternalLink,
+    badge: 'Passo 5 de 5',
+    content:
+      'Para transmitir, copie o link da tela cadastrada e abra no navegador da sua Smart TV, TV Box ou Chromecast. Pressione a tecla "F" ou clique no botão de tela cheia para transmissão contínua sem bordas.',
+    actionLabel: 'Entendido, Começar a Usar!',
+    actionType: 'finish' as const,
+  },
+];
 
 export const TutorialModal: React.FC<TutorialModalProps> = ({
   isOpen,
   onClose,
-  onOpenCreateSlide,
-  onOpenConnectTV,
+  onOpenBrand,
+  onOpenNewScreen,
+  onOpenNewSlide,
+  onOpenTicker,
 }) => {
-  const [currentStep, setCurrentStep] = useState(0);
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
   if (!isOpen) return null;
 
-  const steps = [
-    {
-      title: '1. Crie seus Slides e Cardápios',
-      badge: 'Passo 1',
-      icon: ImageIcon,
-      accent: '#2563EB',
-      summary: 'Destaque seus pratos, preços, promoções e fotos em alta resolução.',
-      points: [
-        'Escolha uma imagem de fundo (use suas próprias fotos ou selecione nossos modelos em alta resolução).',
-        'Defina o título do prato ou produto, descrição atrativa e preços normal e promocional.',
-        'Ative o QR Code inteligente: gere automaticamente pelo link do seu WhatsApp, Instagram ou Cardápio.',
-        'Escolha entre mais de 10 cores de destaque e ajuste a opacidade de fundo para máxima legibilidade.',
-      ],
-      action: {
-        label: 'Criar Slide Agora',
-        onClick: () => {
-          onClose();
-          onOpenCreateSlide?.();
-        },
-      },
-    },
-    {
-      title: '2. Conecte com Telões ou Smart TVs',
-      badge: 'Passo 2',
-      icon: Tv,
-      accent: '#3B82F6',
-      summary: 'Sem necessidade de aparelhos caros: funciona em qualquer TV com navegador!',
-      points: [
-        'Acesse o botão "Conectar TV" no menu superior para visualizar o link direto e o QR Code.',
-        'Abra o navegador da sua TV (Samsung Internet, LG Web Browser ou Chrome no Android TV / TV Box).',
-        'Digite o link da tela ou aponte a câmera para o QR Code para abrir o player instantaneamente.',
-        'Pressione o botão de tela cheia para a TV rodar 24/7 sem barras nem menus visíveis.',
-      ],
-      action: {
-        label: 'Ver Link e QR Code da TV',
-        onClick: () => {
-          onClose();
-          onOpenConnectTV?.();
-        },
-      },
-    },
-    {
-      title: '3. Clima Oficial & Letreiro ao Vivo',
-      badge: 'Passo 3',
-      icon: CloudSun,
-      accent: '#059669',
-      summary: 'Deixe sua TV com aparência profissional de canal de notícias.',
-      points: [
-        'Clique no botão do Clima para selecionar sua cidade ou clique em GPS para detectar automaticamente.',
-        'A TV mostra a temperatura atual, máxima, mínima e sensação climática em tempo real.',
-        'Ative o letreiro rotativo no rodapé da tela para avisos relâmpago, Wi-Fi da loja ou comunicados importantes.',
-        'Qualquer alteração feita no painel pelo celular ou computador atualiza a TV em tempo real!',
-      ],
-      action: null,
-    },
-    {
-      title: '4. Dicas de Ouro para a sua Empresa',
-      badge: 'Passo 4',
-      icon: Sparkles,
-      accent: '#7C3AED',
-      summary: 'Boas práticas para aumentar suas vendas e engajamento no salão.',
-      points: [
-        'Mantenha o tempo de cada slide entre 10 e 15 segundos para dar tempo dos clientes lerem e escanearem o QR.',
-        'Se você tiver totem vertical, crie telas no formato 9:16 Vertical no gerenciador de telas.',
-        'Use o Modo Claro ou Modo Escuro no painel conforme sua preferência visual pelo botão no cabeçalho.',
-        'Seus dados ficam 100% salvos e seguros no seu navegador e sincronizam entre telas.',
-      ],
-      action: null,
-    },
-  ];
+  const currentStep = TUTORIAL_STEPS[currentStepIndex];
+  const IconComponent = currentStep.icon;
 
-  const activeStep = steps[currentStep];
-  const StepIcon = activeStep.icon;
+  const handleAction = () => {
+    if (currentStep.actionType === 'brand') {
+      onClose();
+      onOpenBrand();
+    } else if (currentStep.actionType === 'screen') {
+      onClose();
+      onOpenNewScreen();
+    } else if (currentStep.actionType === 'slide') {
+      onClose();
+      onOpenNewSlide();
+    } else if (currentStep.actionType === 'ticker') {
+      onClose();
+      onOpenTicker();
+    } else {
+      onClose();
+    }
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200">
-      <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-700/80 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-        {/* Header */}
-        <div className="p-5 sm:p-6 bg-gradient-to-b from-blue-950/40 to-transparent border-b border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div
-              className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-md"
-              style={{ backgroundColor: activeStep.accent }}
-            >
-              <StepIcon className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400">
-                  {activeStep.badge} de {steps.length}
-                </span>
-              </div>
-              <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
-                {activeStep.title}
-              </h3>
-            </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-xs animate-in fade-in duration-150">
+      <div
+        className={`relative w-full max-w-lg rounded-2xl p-5 sm:p-6 overflow-hidden shadow-2xl border transition-colors ${
+          isDark
+            ? 'bg-[#0f172a] border-slate-800 text-white'
+            : 'bg-white border-slate-200 text-slate-900'
+        }`}
+      >
+        {/* Top Header */}
+        <div className="flex items-center justify-between pb-3.5 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
+              {currentStep.badge}
+            </span>
+            <span className={`text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              Passo a Passo Interativo
+            </span>
           </div>
 
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+              isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+            title="Fechar ou pular"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Body */}
-        <div className="p-5 sm:p-6 space-y-5 overflow-y-auto flex-1">
-          <p className="text-sm font-medium text-slate-200 leading-relaxed">
-            {activeStep.summary}
-          </p>
-
-          <div className="space-y-3 bg-slate-800/60 border border-slate-700/80 rounded-2xl p-4">
-            {activeStep.points.map((point, idx) => (
-              <div key={idx} className="flex items-start gap-2.5">
-                <CheckCircle2
-                  className="w-4 h-4 shrink-0 mt-0.5"
-                  style={{ color: activeStep.accent }}
-                />
-                <span className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                  {point}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          {activeStep.action && (
-            <div className="pt-1">
-              <button
-                type="button"
-                onClick={activeStep.action.onClick}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-white text-xs font-bold transition-all cursor-pointer shadow-md"
-                style={{ backgroundColor: activeStep.accent }}
-              >
-                <span>{activeStep.action.label}</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
+        {/* Step Progress Indicators */}
+        <div className="flex items-center gap-1.5 pt-3.5 pb-1">
+          {TUTORIAL_STEPS.map((step, idx) => (
+            <button
+              key={step.step}
+              onClick={() => setCurrentStepIndex(idx)}
+              className={`h-1.5 flex-1 rounded-full transition-all cursor-pointer ${
+                idx === currentStepIndex
+                  ? 'bg-sky-500'
+                  : idx < currentStepIndex
+                  ? 'bg-sky-800 dark:bg-sky-900'
+                  : isDark
+                  ? 'bg-slate-800'
+                  : 'bg-slate-200'
+              }`}
+              title={`Ir para passo ${idx + 1}`}
+            />
+          ))}
         </div>
 
-        {/* Footer with Step Dots and Navigation */}
-        <div className="p-4 sm:p-5 bg-slate-900 border-t border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            {steps.map((_, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => setCurrentStep(i)}
-                className={`h-2 rounded-full transition-all cursor-pointer ${
-                  currentStep === i ? 'w-6 bg-blue-500' : 'w-2 bg-slate-700 hover:bg-slate-600'
-                }`}
-              />
-            ))}
+        {/* Step Content */}
+        <div className="py-3.5 space-y-3.5">
+          <div className="flex items-start gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-sky-500/10 text-sky-500 border border-sky-500/20 flex items-center justify-center shrink-0">
+              <IconComponent className="w-5 h-5" />
+            </div>
+
+            <div className="space-y-0.5 min-w-0">
+              <h3 className={`text-sm sm:text-base font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                {currentStep.title}
+              </h3>
+              <p className={`text-xs font-medium ${isDark ? 'text-sky-400' : 'text-sky-600'}`}>
+                {currentStep.subtitle}
+              </p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div
+            className={`p-3.5 rounded-xl border text-xs leading-relaxed ${
+              isDark
+                ? 'bg-[#152033] border-slate-800 text-slate-300'
+                : 'bg-slate-50 border-slate-200 text-slate-700'
+            }`}
+          >
+            {currentStep.content}
+          </div>
+
+          {/* Direct Action Button */}
+          <div className="pt-0.5">
             <button
-              type="button"
-              disabled={currentStep === 0}
-              onClick={() => setCurrentStep((c) => Math.max(0, c - 1))}
-              className={`flex items-center gap-1 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-                currentStep === 0
-                  ? 'text-slate-600 cursor-not-allowed'
-                  : 'text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 cursor-pointer'
-              }`}
+              onClick={handleAction}
+              className="w-full py-2.5 px-4 bg-sky-600 hover:bg-sky-500 active:scale-[0.99] text-white font-bold text-xs sm:text-sm rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center gap-2"
             >
-              <ChevronLeft className="w-3.5 h-3.5" />
-              <span>Anterior</span>
+              <span>{currentStep.actionLabel}</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
-
-            {currentStep < steps.length - 1 ? (
-              <button
-                type="button"
-                onClick={() => setCurrentStep((c) => Math.min(steps.length - 1, c + 1))}
-                className="flex items-center gap-1 px-4 py-1.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-colors cursor-pointer"
-              >
-                <span>Próximo</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-1.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-colors cursor-pointer"
-              >
-                <span>Entendi, Concluir</span>
-              </button>
-            )}
           </div>
+        </div>
+
+        {/* Footer Navigation */}
+        <div
+          className={`pt-3 border-t flex items-center justify-between gap-2 ${
+            isDark ? 'border-slate-800' : 'border-slate-200'
+          }`}
+        >
+          <button
+            onClick={() => setCurrentStepIndex((prev) => Math.max(0, prev - 1))}
+            disabled={currentStepIndex === 0}
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-20 cursor-pointer ${
+              isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Anterior</span>
+          </button>
+
+          <button
+            onClick={onClose}
+            className={`text-xs font-medium transition-colors cursor-pointer px-2 py-1 rounded-lg ${
+              isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            Pular Tutorial (Fazer Depois)
+          </button>
+
+          <button
+            onClick={() =>
+              setCurrentStepIndex((prev) =>
+                Math.min(TUTORIAL_STEPS.length - 1, prev + 1)
+              )
+            }
+            disabled={currentStepIndex === TUTORIAL_STEPS.length - 1}
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-20 cursor-pointer ${
+              isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <span>Próximo</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
     </div>
