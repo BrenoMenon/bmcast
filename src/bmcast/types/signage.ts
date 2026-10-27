@@ -30,6 +30,7 @@ export interface CategoryOverlayConfig {
   showPriceTag?: boolean | undefined;      // Exibe a caixa de preços
   position?: 'bottom' | 'top' | 'left' | 'right' | undefined;
   overlayOpacity?: number | undefined;     // 0 a 100% de escurecimento do fundo
+  imageFit?: 'cover' | 'contain' | undefined; // Preencher tela 16:9 ou mostrar imagem inteira sem cortes
   discountPercent?: string | undefined;    // Ex: "25% OFF"
   extraItems?: { label: string | undefined; value: string }[];
 }

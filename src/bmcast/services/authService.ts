@@ -1,3 +1,5 @@
+import { supabaseService, SUPABASE_CHANGED_EVENT } from './supabaseClient';
+
 export interface UserAccount {
   id: string;
   name: string;
@@ -36,6 +38,19 @@ export async function sha256(text: string): Promise<string> {
   return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+function mapRowToAccount(row: any): UserAccount {
+  return {
+    id: row.id,
+    name: row.name,
+    email: normEmail(row.email),
+    passwordHash: row.password_hash,
+    recoveryKeyHash: row.recovery_key_hash,
+    ...(row.recovery_question ? { recoveryQuestion: row.recovery_question } : {}),
+    salt: row.salt,
+    createdAt: row.created_at || new Date().toISOString(),
+  };
+}
+
 class AuthenticationService {
   private users: UserAccount[] = [];
   private currentSession: AuthSession | null = null;
@@ -48,15 +63,87 @@ class AuthenticationService {
       this.users = Array.isArray(parsed) ? parsed : [];
       const rawSession = localStorage.getItem(STORAGE_SESSION_KEY);
       const s = rawSession ? JSON.parse(rawSession) : null;
-      this.currentSession = s && s.user && this.users.some((u) => u.id === s.user.id) ? s : null;
+      this.currentSession = s && s.user ? s : null;
     } catch {
       this.users = [];
       this.currentSession = null;
     }
+
+    setTimeout(() => this.syncUsersFromSupabase(), 900);
+    window.addEventListener(SUPABASE_CHANGED_EVENT, () => {
+      this.syncUsersFromSupabase();
+    });
   }
 
   private saveUsers() {
     if (isBrowser()) localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(this.users));
+  }
+
+  private async upsertUserToSupabase(u: UserAccount) {
+    if (supabaseService.isSchemaKnownMissing()) return;
+    const client = supabaseService.getClient();
+    if (!client) return;
+    try {
+      await client.from('app_users').upsert({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        password_hash: u.passwordHash,
+        recovery_key_hash: u.recoveryKeyHash,
+        recovery_question: u.recoveryQuestion || '',
+        salt: u.salt,
+        created_at: u.createdAt,
+      });
+    } catch {
+      /* fallback local */
+    }
+  }
+
+  private async syncUsersFromSupabase() {
+    if (supabaseService.isSchemaKnownMissing()) return;
+    const client = supabaseService.getClient();
+    if (!client) return;
+    try {
+      const { data, error } = await client.from('app_users').select('*');
+      if (error || !Array.isArray(data)) return;
+      let changed = false;
+      for (const row of data) {
+        const remote = mapRowToAccount(row);
+        const idx = this.users.findIndex((u) => u.email === remote.email);
+        if (idx >= 0) {
+          this.users[idx] = remote;
+          changed = true;
+        } else {
+          this.users.push(remote);
+          changed = true;
+        }
+      }
+      if (changed) this.saveUsers();
+    } catch {
+      /* ignore */
+    }
+  }
+
+  private async fetchRemoteUserByEmail(email: string): Promise<UserAccount | null> {
+    if (supabaseService.isSchemaKnownMissing()) return null;
+    const client = supabaseService.getClient();
+    if (!client) return null;
+    try {
+      const { data, error } = await client
+        .from('app_users')
+        .select('*')
+        .eq('email', email)
+        .maybeSingle();
+      if (error || !data) return null;
+      const acc = mapRowToAccount(data);
+      const idx = this.users.findIndex((u) => u.email === email);
+      if (idx >= 0) this.users[idx] = acc;
+      else this.users.push(acc);
+      this.saveUsers();
+      return acc;
+    } catch {
+      return null;
+    }
   }
 
   private startSession(u: UserAccount) {
@@ -72,7 +159,13 @@ class AuthenticationService {
     return this.currentSession ? this.currentSession.user : null;
   }
 
-  async signUp(p: { name: string; email: string; password: string; recoveryKey: string; recoveryQuestion?: string }): Promise<Result> {
+  async signUp(p: {
+    name: string;
+    email: string;
+    password: string;
+    recoveryKey: string;
+    recoveryQuestion?: string;
+  }): Promise<Result> {
     const email = normEmail(p.email);
     const password = p.password;
     const key = normKey(p.recoveryKey);
@@ -80,9 +173,12 @@ class AuthenticationService {
     if (!isEmail(email)) return { success: false, error: 'Informe um e-mail válido.' };
     if (password.length < 6) return { success: false, error: 'A senha deve ter pelo menos 6 caracteres.' };
     const question = (p.recoveryQuestion ?? '').trim();
-    if (p.recoveryQuestion !== undefined && question.length < 5) return { success: false, error: 'Escreva uma pergunta de recuperação com pelo menos 5 caracteres.' };
+    if (p.recoveryQuestion !== undefined && question.length < 5)
+      return { success: false, error: 'Escreva uma pergunta de recuperação com pelo menos 5 caracteres.' };
     if (key.length < 2) return { success: false, error: 'Escreva a resposta da pergunta de recuperação.' };
-    if (this.users.some((u) => u.email === email))
+
+    const existingRemote = await this.fetchRemoteUserByEmail(email);
+    if (existingRemote || this.users.some((u) => u.email === email))
       return { success: false, error: 'Já existe uma conta cadastrada com este e-mail.' };
 
     const salt = randomId(12);
@@ -98,12 +194,16 @@ class AuthenticationService {
     };
     this.users.push(user);
     this.saveUsers();
+    await this.upsertUserToSupabase(user);
     return { success: true, user: this.startSession(user) };
   }
 
   async signIn(emailRaw: string, password: string): Promise<Result> {
     const email = normEmail(emailRaw);
-    const user = this.users.find((u) => u.email === email);
+    let user = this.users.find((u) => u.email === email) || null;
+    if (!user) {
+      user = await this.fetchRemoteUserByEmail(email);
+    }
     if (!user || (await sha256(user.salt + password)) !== user.passwordHash)
       return { success: false, error: 'E-mail ou senha incorretos.' };
     return { success: true, user: this.startSession(user) };
@@ -112,11 +212,15 @@ class AuthenticationService {
   async recoverPassword(p: { email: string; recoveryKey: string; newPassword: string }): Promise<Result> {
     const email = normEmail(p.email);
     if (p.newPassword.length < 6) return { success: false, error: 'A nova senha deve ter no mínimo 6 caracteres.' };
-    const user = this.users.find((u) => u.email === email);
+    let user = this.users.find((u) => u.email === email) || null;
+    if (!user) {
+      user = await this.fetchRemoteUserByEmail(email);
+    }
     if (!user || (await sha256(user.salt + normKey(p.recoveryKey))) !== user.recoveryKeyHash)
       return { success: false, error: 'Resposta de recuperação incorreta.' };
     user.passwordHash = await sha256(user.salt + p.newPassword);
     this.saveUsers();
+    await this.upsertUserToSupabase(user);
     return { success: true, user: this.startSession(user) };
   }
 
@@ -124,6 +228,14 @@ class AuthenticationService {
     const user = this.users.find((u) => u.email === normEmail(emailRaw));
     if (!user) return null;
     return user.recoveryQuestion || 'Qual é a sua chave de recuperação?';
+  }
+
+  async findRecoveryQuestionAsync(emailRaw: string): Promise<string | null> {
+    const localQ = this.getRecoveryQuestion(emailRaw);
+    if (localQ) return localQ;
+    const remote = await this.fetchRemoteUserByEmail(normEmail(emailRaw));
+    if (!remote) return null;
+    return remote.recoveryQuestion || 'Qual é a sua chave de recuperação?';
   }
 
   private async verifyCurrent(password: string): Promise<UserAccount | null> {
@@ -139,6 +251,7 @@ class AuthenticationService {
     if (!user) return { success: false, error: 'Senha atual incorreta.' };
     user.passwordHash = await sha256(user.salt + newPassword);
     this.saveUsers();
+    await this.upsertUserToSupabase(user);
     return { success: true };
   }
 
@@ -152,6 +265,7 @@ class AuthenticationService {
     user.recoveryQuestion = q.slice(0, 200);
     user.recoveryKeyHash = await sha256(user.salt + a);
     this.saveUsers();
+    await this.upsertUserToSupabase(user);
     return { success: true };
   }
 
@@ -160,6 +274,14 @@ class AuthenticationService {
     if (!user) return { success: false, error: 'Senha atual incorreta.' };
     this.users = this.users.filter((u) => u.id !== user.id);
     this.saveUsers();
+    const client = supabaseService.getClient();
+    if (client && !supabaseService.isSchemaKnownMissing()) {
+      client
+        .from('app_users')
+        .delete()
+        .eq('id', user.id)
+        .then(() => {}, () => {});
+    }
     this.signOut();
     return { success: true };
   }

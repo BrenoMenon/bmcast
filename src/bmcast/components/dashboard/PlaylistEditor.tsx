@@ -29,7 +29,7 @@ const CATEGORY_LABELS: Record<SlideCategoryType, string> = {
   cardapio: 'Cardápio',
   promo: 'Promoção',
   aviso: 'Informativo',
-  mural: 'Mural de Fotos',
+  mural: 'Mural / Foto',
 };
 
 export const PlaylistEditor: React.FC<PlaylistEditorProps> = ({
@@ -66,7 +66,8 @@ export const PlaylistEditor: React.FC<PlaylistEditorProps> = ({
 
     const items = [...playlist.items];
     const [moved] = items.splice(index, 1);
-    if (!moved) return; items.splice(targetIndex, 0, moved);
+    if (!moved) return;
+    items.splice(targetIndex, 0, moved);
 
     const reordered = items.map((item, idx) => ({ ...item, order: idx }));
     onUpdatePlaylist({ ...playlist, items: reordered });
@@ -79,38 +80,40 @@ export const PlaylistEditor: React.FC<PlaylistEditorProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Action Subheader */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
-        <div>
-          <h2 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight uppercase">
+      {/* Section Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
+        <div className="min-w-0">
+          <h2 className="text-base font-extrabold tracking-tight text-foreground">
             Grade de Transmissão Ativa na TV
           </h2>
-          <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-1">
-            <span>{playlist.items.length} slides</span>
-            <span className="text-slate-300 dark:text-slate-600">·</span>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+            <span>{playlist.items.length} slides na sequência</span>
+            <span aria-hidden="true">·</span>
             <span>
-              Ciclo total:{' '}
-              <strong className="text-slate-900 dark:text-white font-semibold">
+              Ciclo:{' '}
+              <strong className="font-semibold text-foreground tabular-nums">
                 {formatTotalTime(totalDurationSeconds)}
               </strong>
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="grid grid-cols-2 sm:flex items-center gap-2 shrink-0">
           <button
+            type="button"
             onClick={onCreateNewSlide}
-            className="flex items-center gap-1.5 px-4 py-2 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white text-xs font-bold rounded-full transition-all cursor-pointer shadow-sm"
+            className="inline-flex h-10 sm:h-9 items-center justify-center gap-1.5 rounded-2xl sm:rounded-full bg-primary px-4 text-xs font-bold text-primary-foreground shadow-xs hover:opacity-95 active:scale-[0.98] transition cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
-            <span>Adicionar Slide</span>
+            <Plus className="h-4 w-4 shrink-0" />
+            <span>Novo Slide</span>
           </button>
           <button
+            type="button"
             onClick={onLaunchPlayer}
-            className="flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-white text-xs font-semibold rounded-full transition-all cursor-pointer shadow-xs"
+            className="inline-flex h-10 sm:h-9 items-center justify-center gap-1.5 rounded-2xl sm:rounded-full border border-border bg-card px-4 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer"
           >
-            <Tv className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-            <span>Ver na TV</span>
+            <Tv className="h-4 w-4 text-primary shrink-0" />
+            <span>Abrir TV</span>
           </button>
         </div>
       </div>
@@ -118,17 +121,18 @@ export const PlaylistEditor: React.FC<PlaylistEditorProps> = ({
       {/* Playlist Items */}
       <div className="space-y-3">
         {playlist.items.length === 0 ? (
-          <div className="p-10 text-center bg-white dark:bg-slate-800/40 border border-dashed border-slate-300 dark:border-slate-700 rounded-3xl shadow-sm">
-            <div className="w-12 h-12 rounded-2xl bg-sky-50 dark:bg-slate-900 border border-sky-200 dark:border-slate-700 text-sky-600 dark:text-sky-400 flex items-center justify-center mx-auto mb-3 shadow-inner">
-              <Tv className="w-6 h-6" />
+          <div className="rounded-3xl sm:rounded-[2rem] border border-dashed border-border bg-card p-6 sm:p-10 text-center shadow-xs">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/15 text-primary ring-1 ring-primary/25">
+              <Tv className="h-6 w-6" />
             </div>
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Nenhum slide programado</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto mt-1 mb-4 leading-relaxed">
-              Crie seu primeiro slide com foto, categoria, personalização da marca e QR Code para começar.
+            <h3 className="text-sm font-bold text-foreground">Sua grade está limpa</h3>
+            <p className="mx-auto mb-5 mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">
+              Envie suas próprias artes, fotos ou comunicados para iniciar a exibição na Smart TV.
             </p>
             <button
+              type="button"
               onClick={onCreateNewSlide}
-              className="px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-full transition-all cursor-pointer shadow-sm"
+              className="rounded-full bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground shadow-xs hover:opacity-95 transition cursor-pointer"
             >
               Criar Primeiro Slide
             </button>
@@ -142,161 +146,148 @@ export const PlaylistEditor: React.FC<PlaylistEditorProps> = ({
             const brandCfg = item.brandConfig || media?.brandConfig;
             const qrCfg = item.qrConfig || media?.qrConfig;
             const overlayCfg = item.categoryOverlay || media?.categoryOverlay;
+            const fitMode = overlayCfg?.imageFit || 'cover';
 
             return (
               <div
                 key={item.id}
-                className="bg-white dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-3.5 sm:p-4 transition-all hover:border-sky-500/40 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm"
+                className="flex flex-col md:flex-row md:items-center justify-between gap-3 rounded-3xl border border-border bg-card p-3.5 sm:p-4 shadow-xs hover:border-primary/40 transition"
               >
-                {/* Left: Reorder, Thumbnail, and Info */}
-                <div className="flex items-center gap-3.5 min-w-0">
-                  {/* Reorder Arrows */}
-                  <div className="flex flex-col items-center justify-center shrink-0 text-slate-400 dark:text-slate-500">
+                {/* Left: Reorder, High-Clarity Thumbnail, and Info */}
+                <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+                  <div className="flex flex-col items-center justify-center shrink-0 text-muted-foreground">
                     <button
+                      type="button"
                       onClick={() => handleMove(index, 'up')}
                       disabled={index === 0}
-                      className="p-1 hover:text-slate-900 dark:hover:text-white disabled:opacity-20 cursor-pointer transition-colors"
+                      className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-muted hover:text-foreground disabled:opacity-25 cursor-pointer transition"
                       title="Mover para cima"
                     >
-                      <ChevronUp className="w-3.5 h-3.5" />
+                      <ChevronUp className="h-4 w-4" />
                     </button>
-                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <span className="text-xs font-bold text-foreground tabular-nums leading-none py-0.5">
                       {index + 1}
                     </span>
                     <button
+                      type="button"
                       onClick={() => handleMove(index, 'down')}
                       disabled={index === playlist.items.length - 1}
-                      className="p-1 hover:text-slate-900 dark:hover:text-white disabled:opacity-20 cursor-pointer transition-colors"
+                      className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-muted hover:text-foreground disabled:opacity-25 cursor-pointer transition"
                       title="Mover para baixo"
                     >
-                      <ChevronDown className="w-3.5 h-3.5" />
+                      <ChevronDown className="h-4 w-4" />
                     </button>
                   </div>
 
                   {/* Thumbnail */}
-                  <div className="relative w-20 h-14 sm:w-24 sm:h-14 bg-slate-100 dark:bg-black rounded-xl overflow-hidden shrink-0 border border-slate-200 dark:border-slate-700">
+                  <div className="relative h-16 w-24 sm:w-28 shrink-0 overflow-hidden rounded-2xl border border-border bg-zinc-950">
                     {media?.url ? (
                       <img
-                        src={media.thumbnail || media.url}
+                        src={media.url}
                         alt={media.title}
-                        className="w-full h-full object-cover"
+                        loading="lazy"
+                        className={`h-full w-full ${
+                          fitMode === 'contain' ? 'object-contain' : 'object-cover'
+                        }`}
                       />
                     ) : (
                       <div
-                        className="w-full h-full flex items-center justify-center text-white text-[10px] font-bold text-center px-1"
-                        style={{ backgroundColor: brandCfg?.accentColor || '#0284c7' }}
+                        className="flex h-full w-full items-center justify-center px-1.5 text-center text-[10px] font-bold text-white"
+                        style={{ backgroundColor: brandCfg?.accentColor || '#2563EB' }}
                       >
-                        Sem foto
+                        Arte Texto
                       </div>
                     )}
-                    <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded-full bg-black/80 text-[9px] font-bold text-white border border-white/10">
-                      {catLabel}
-                    </span>
                   </div>
 
-                  {/* Titles & Meta */}
-                  <div className="min-w-0 space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm truncate">
-                        {item.customTitle || overlayCfg?.headline || media?.title || 'Slide Sem Título'}
-                      </h4>
+                  {/* Titles & Unboxed Metadata */}
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <h4 className="truncate text-xs sm:text-sm font-bold text-foreground">
+                      {item.customTitle || overlayCfg?.headline || media?.title || 'Slide da TV'}
+                    </h4>
 
-                      {overlayCfg?.badgeText && (
-                        <span
-                          className="px-2 py-0.5 rounded-full text-[9px] font-bold text-white tracking-wide uppercase"
-                          style={{ backgroundColor: overlayCfg.accentColor || '#0284c7' }}
-                        >
-                          {overlayCfg.badgeText}
-                        </span>
+                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-muted-foreground">
+                      <span className="font-medium text-foreground/85">{catLabel}</span>
+                      <span aria-hidden="true">·</span>
+                      <span className="tabular-nums">{item.durationSeconds || 12}s</span>
+                      {qrCfg?.showQrCode && (
+                        <>
+                          <span aria-hidden="true">·</span>
+                          <span className="font-medium text-primary">QR ativo</span>
+                        </>
                       )}
-                    </div>
-
-                    <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 flex-wrap">
-                      <span>{item.durationSeconds || 12}s</span>
-
-                      <span aria-hidden="true" className="text-slate-300 dark:text-slate-600">·</span>
-
-                      {brandCfg?.showBrand ? (
-                        <span className="text-sky-600 dark:text-sky-400 font-medium">Marca: {brandCfg.brandName || 'Ativa'}</span>
-                      ) : (
-                        <span className="text-slate-400 dark:text-slate-500">Marca oculta</span>
-                      )}
-
-                      <span aria-hidden="true" className="text-slate-300 dark:text-slate-600">·</span>
-
-                      {qrCfg?.showQrCode ? (
-                        <span className="text-sky-600 dark:text-sky-300 font-medium">
-                          {qrCfg.qrCodeType === 'custom_upload' ? 'QR Real' : 'QR Link'}
-                        </span>
-                      ) : (
-                        <span className="text-slate-400 dark:text-slate-500">Sem QR</span>
-                      )}
-
                       {overlayCfg?.pricePromo && (
                         <>
-                          <span aria-hidden="true" className="text-slate-300 dark:text-slate-600">·</span>
-                          <span className="text-emerald-600 dark:text-emerald-400 font-bold">{overlayCfg.pricePromo}</span>
+                          <span aria-hidden="true">·</span>
+                          <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                            {overlayCfg.pricePromo}
+                          </span>
                         </>
                       )}
                     </div>
                   </div>
                 </div>
 
-                {/* Right: Duration & Actions */}
-                <div className="flex items-center justify-end gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-slate-200 dark:border-slate-700/80">
-                  {/* Duration input */}
-                  <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300">
-                    <Clock className="w-3.5 h-3.5 text-slate-400" />
+                {/* Right: Duration & Actions (Responsive row on mobile, zero horizontal overflow) */}
+                <div className="flex items-center justify-between md:justify-end gap-2 border-t border-border pt-2.5 md:border-t-0 md:pt-0">
+                  <div className="flex items-center gap-1 rounded-xl border border-border bg-muted/60 px-2.5 py-1.5 text-xs text-muted-foreground">
+                    <Clock className="h-3.5 w-3.5 shrink-0" />
                     <input
                       type="number"
                       min={3}
                       max={120}
                       value={item.durationSeconds || 12}
                       onChange={(e) =>
-                        handleDurationChange(item.id, parseInt(e.target.value) || 12)
+                        handleDurationChange(item.id, parseInt(e.target.value, 10) || 12)
                       }
-                      className="w-8 bg-transparent text-center font-bold text-slate-900 dark:text-white focus:outline-none"
+                      aria-label="Duração em segundos"
+                      className="w-9 bg-transparent text-center text-sm sm:text-xs font-bold text-foreground focus:outline-none tabular-nums"
                     />
-                    <span className="text-[10px] text-slate-400">s</span>
+                    <span className="text-[11px]">s</span>
                   </div>
 
-                  {/* Personalizar Slide */}
-                  <button
-                    onClick={() => {
-                      if (media) {
-                        onEditSlide({
-                          ...media,
-                          brandConfig: item.brandConfig || media.brandConfig,
-                          qrConfig: item.qrConfig || media.qrConfig,
-                          categoryOverlay: item.categoryOverlay || media.categoryOverlay,
-                          durationDefault: item.durationSeconds || media.durationDefault,
-                        });
-                      }
-                    }}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-semibold text-slate-800 dark:text-white rounded-full border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
-                    title="Editar Marca, QR Code e Oferta"
-                  >
-                    <Edit3 className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
-                    <span>Personalizar</span>
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (media) {
+                          onEditSlide({
+                            ...media,
+                            brandConfig: item.brandConfig || media.brandConfig,
+                            qrConfig: item.qrConfig || media.qrConfig,
+                            categoryOverlay: item.categoryOverlay || media.categoryOverlay,
+                            durationDefault: item.durationSeconds || media.durationDefault,
+                          });
+                        }
+                      }}
+                      className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border bg-muted/60 px-3 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer"
+                      title="Editar Slide"
+                    >
+                      <Edit3 className="h-3.5 w-3.5 text-primary shrink-0" />
+                      <span className="sm:hidden">Editar</span>
+                      <span className="hidden sm:inline">Personalizar</span>
+                    </button>
 
-                  {/* Duplicar Slide */}
-                  <button
-                    onClick={() => onDuplicateSlide(playlist.id, item.id)}
-                    className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-white rounded-full border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
-                    title="Duplicar Slide como nova variação"
-                  >
-                    <Copy className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => onDuplicateSlide(playlist.id, item.id)}
+                      className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-muted/60 text-foreground hover:bg-muted transition cursor-pointer"
+                      title="Duplicar Slide"
+                      aria-label="Duplicar Slide"
+                    >
+                      <Copy className="h-3.5 w-3.5 text-primary" />
+                    </button>
 
-                  {/* Remover da Playlist */}
-                  <button
-                    onClick={() => handleRemoveItem(item.id)}
-                    className="p-2 bg-slate-100 hover:bg-red-50 dark:bg-slate-800 dark:hover:bg-red-500/20 text-slate-400 hover:text-red-500 rounded-full border border-slate-200 dark:border-slate-700 hover:border-red-300 dark:hover:border-red-500/40 transition-colors cursor-pointer"
-                    title="Remover"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveItem(item.id)}
+                      className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-muted/60 text-muted-foreground hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive transition cursor-pointer"
+                      title="Remover da grade"
+                      aria-label="Remover da grade"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             );

@@ -14,18 +14,22 @@ import {
   CloudSun,
   QrCode,
   ShieldCheck,
-  Sparkles,
   Sun,
   Moon,
 } from 'lucide-react';
 import { Logo } from '../common/Logo';
 import { authService, User as AuthUser } from '../../services/authService';
+import { useTheme } from '../../services/themeService';
 
 interface LoginScreenProps {
   onSuccess: (user: AuthUser) => void;
 }
 
+const inputBaseCls =
+  'w-full py-3 bg-input/60 border border-border rounded-2xl text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:bg-card focus:ring-2 focus:ring-primary/20 transition';
+
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
+  const { theme, toggleTheme } = useTheme();
   const [mode, setMode] = useState<'signin' | 'signup' | 'recovery'>('signin');
 
   // Common inputs
@@ -50,18 +54,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-
-  const [theme, setTheme] = useState<'dark' | 'light'>(() =>
-    typeof document !== 'undefined' && document.documentElement.classList.contains('light') ? 'light' : 'dark'
-  );
-  const toggleTheme = () => {
-    const next = theme === 'dark' ? 'light' : 'dark';
-    const root = document.documentElement;
-    root.classList.remove('dark', 'light');
-    root.classList.add(next);
-    try { localStorage.setItem('bmcast_theme_mode', next); } catch { /* ignore */ }
-    setTheme(next);
-  };
 
   const run = async (fn: () => Promise<void>) => {
     if (loading) return;
@@ -91,9 +83,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
     run(async () => {
       const res = await authService.signUp({ name, email, password, recoveryKey, recoveryQuestion });
       if (res.success && res.user) {
-        setSuccessMsg('Conta criada com sucesso! Guarde sua pergunta e resposta de recuperação. Entrando...');
+        setSuccessMsg('Conta criada com sucesso! Entrando no painel...');
         const u = res.user;
-        setTimeout(() => onSuccess(u), 1200);
+        setTimeout(() => onSuccess(u), 700);
       } else setErrorMsg(res.error || 'Erro ao registrar conta.');
     });
   };
@@ -101,10 +93,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
   const handleRecover = (e: React.FormEvent) => {
     e.preventDefault();
     if (!foundQuestion) {
-      setErrorMsg(null);
-      const q = authService.getRecoveryQuestion(recoveryEmail);
-      if (!q) setErrorMsg('Não encontramos uma conta com este e-mail.');
-      else setFoundQuestion(q);
+      run(async () => {
+        const q = await authService.findRecoveryQuestionAsync(recoveryEmail);
+        if (!q) setErrorMsg('Não encontramos uma conta com este e-mail.');
+        else setFoundQuestion(q);
+      });
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -120,168 +113,177 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
       if (res.success && res.user) {
         setSuccessMsg('Senha atualizada com sucesso! Entrando...');
         const u = res.user;
-        setTimeout(() => onSuccess(u), 900);
+        setTimeout(() => onSuccess(u), 700);
       } else setErrorMsg(res.error || 'Não foi possível redefinir sua senha.');
     });
   };
 
   return (
-    <div className="app-shell min-h-screen bg-slate-950 text-white flex flex-col justify-between font-sans">
-      <button
-        type="button"
-        onClick={toggleTheme}
-        aria-label={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
-        className="fixed right-4 top-4 z-40 grid h-10 w-10 place-items-center rounded-full border border-slate-700 bg-slate-900 text-sky-400 shadow-md transition hover:scale-105"
-      >
-        {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-      </button>
+    <div className="relative min-h-screen bg-background text-foreground flex flex-col justify-between font-sans transition-colors duration-200 overflow-x-hidden">
       <div className="grid min-h-screen lg:grid-cols-2">
-        {/* LEFT COLUMN: HERO ASIDE (Clean Executive Blue & Slate, No AI Gradients) */}
-        <aside className="keep-dark dark relative hidden lg:flex lg:flex-col lg:justify-between lg:p-12 xl:p-16 text-white bg-slate-900 border-r border-slate-800">
-          {/* Top Brand Logo */}
+        {/* LEFT COLUMN: BLCORE HERO SHOWCASE */}
+        <aside
+          className="relative hidden lg:flex lg:flex-col lg:justify-between lg:p-12 xl:p-16 text-white border-r border-border overflow-hidden"
+          style={{ background: 'var(--gradient-hero)' }}
+        >
           <div className="relative z-10">
-            <Logo size="lg" />
+            <Logo size="lg" forceLightText />
           </div>
 
-          {/* Center Pitch Content */}
           <div className="relative z-10 max-w-lg space-y-6">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-sky-500/10 border border-sky-500/25 text-xs font-bold text-sky-400">
-              <Tv className="w-3.5 h-3.5" />
-              <span>Sinalização Digital & TV Corporativa</span>
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-xs font-semibold text-sky-200 ring-1 ring-white/15 backdrop-blur-md">
+              <Tv className="h-3.5 w-3.5 text-sky-300" />
+              <span>Sinalização Digital &amp; TV Corporativa</span>
             </div>
 
             <h2 className="text-3xl xl:text-4xl font-extrabold tracking-tight leading-tight text-white">
-              Painel profissional para <span className="text-sky-400">telas e TVs da sua empresa</span>
+              Painel profissional para <span className="text-sky-300">telas e TVs da sua empresa</span>
             </h2>
 
-            <p className="text-slate-300 text-sm leading-relaxed">
-              Sistema corporativo para exibição de cardápios, comunicados, preços, previsão do tempo ao vivo via API e QR Codes interativos. Comece com seu painel 100% limpo e personalize tudo.
+            <p className="text-white/80 text-sm leading-relaxed">
+              Gerencie cardápios digitais, ofertas, murais corporativos, previsão do tempo ao vivo e QR Codes interativos com atualização instantânea nas suas telas.
             </p>
 
-            <div className="grid grid-cols-2 gap-3.5 pt-2">
-              <div className="p-4 rounded-2xl bg-slate-800/80 border border-slate-700/80 space-y-1.5 shadow-sm">
-                <div className="flex items-center gap-2 text-sky-400 font-bold text-xs">
-                  <CloudSun className="w-4 h-4" />
-                  <span>Clima ao Vivo</span>
+            <div className="grid grid-cols-2 gap-4 pt-2">
+              <div className="rounded-3xl bg-white/10 p-5 ring-1 ring-white/15 backdrop-blur-md space-y-1.5">
+                <div className="flex items-center gap-2 text-sky-300 font-bold text-xs">
+                  <CloudSun className="h-4 w-4" />
+                  <span>Clima &amp; Letreiro</span>
                 </div>
-                <p className="text-[11px] text-slate-400">Dados meteorológicos em tempo real direto na tela.</p>
+                <p className="text-xs text-white/75 leading-relaxed">
+                  Meteorologia em tempo real e faixa de avisos contínua na tela.
+                </p>
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-800/80 border border-slate-700/80 space-y-1.5 shadow-sm">
-                <div className="flex items-center gap-2 text-sky-400 font-bold text-xs">
-                  <QrCode className="w-4 h-4" />
-                  <span>QR Code & Marca</span>
+              <div className="rounded-3xl bg-white/10 p-5 ring-1 ring-white/15 backdrop-blur-md space-y-1.5">
+                <div className="flex items-center gap-2 text-sky-300 font-bold text-xs">
+                  <QrCode className="h-4 w-4" />
+                  <span>QR Code Interativo</span>
                 </div>
-                <p className="text-[11px] text-slate-400">Logo da sua empresa e links nos seus slides.</p>
+                <p className="text-xs text-white/75 leading-relaxed">
+                  Conecte clientes ao cardápio, WhatsApp ou Instagram direto pela TV.
+                </p>
               </div>
             </div>
           </div>
 
-          {/* Bottom Security Assurance */}
-          <div className="relative z-10 flex items-center gap-2 text-xs text-slate-400">
-            <ShieldCheck className="w-4 h-4 text-sky-400" />
-            <span>Sistema seguro e otimizado para transmissão contínua.</span>
+          <div className="relative z-10 flex items-center gap-2 text-xs text-white/75">
+            <ShieldCheck className="h-4 w-4 text-sky-300 shrink-0" />
+            <span>Transmissão otimizada para TVs e totens.</span>
           </div>
         </aside>
 
-        {/* RIGHT COLUMN: LOGIN FORM CONTAINER */}
-        <div className="relative flex items-center justify-center px-4 py-10 sm:px-8 lg:px-12 bg-slate-950">
+        {/* RIGHT COLUMN: BLCORE AUTH CARD */}
+        <div className="relative flex items-center justify-center px-4 pt-16 pb-10 sm:px-8 sm:py-16 lg:px-12 bg-background">
+          {/* Top-right Icon-Only Theme Switcher (anchored at page top so it does not scroll along) */}
+          <div className="absolute right-4 top-4 sm:right-6 sm:top-6 z-30">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
+              title={theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card/90 text-muted-foreground shadow-sm backdrop-blur-md hover:bg-muted hover:text-foreground transition cursor-pointer"
+            >
+              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
+          </div>
+
           <div className="w-full max-w-md">
-            {/* Mobile Header Logo */}
+            {/* Mobile Brand */}
             <div className="mb-6 flex flex-col items-center gap-3 lg:hidden">
-              <Logo size="lg" />
+              <Logo size="md" />
             </div>
 
-            {/* Rounded Card */}
-            <div className="rounded-3xl border border-slate-800 bg-slate-900/90 p-6 sm:p-8 shadow-xl">
-              <div className="mb-6">
-                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl text-white">
+            {/* Extra-rounded blcore Card */}
+            <div className="bl-card rounded-3xl sm:rounded-[2rem] p-5 sm:p-8">
+              <div className="mb-5 sm:mb-6">
+                <h1 className="text-xl font-extrabold tracking-tight sm:text-3xl text-foreground">
                   {mode === 'signin' && 'Bem-vindo de volta'}
                   {mode === 'signup' && 'Criar sua conta'}
                   {mode === 'recovery' && 'Recuperar acesso'}
                 </h1>
-                <p className="mt-1.5 text-sm text-slate-400">
-                  {mode === 'signin' && 'Entre na sua conta ou crie uma nova em segundos.'}
-                  {mode === 'signup' && 'Cadastre seu estabelecimento e inicie a transmissão.'}
-                  {mode === 'recovery' && 'Responda sua pergunta de recuperação para criar uma nova senha.'}
+                <p className="mt-1.5 text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  {mode === 'signin' && 'Acesse seu painel de transmissão ou cadastre sua empresa.'}
+                  {mode === 'signup' && 'Configure sua conta limpa do zero em poucos segundos.'}
+                  {mode === 'recovery' && 'Responda sua pergunta de segurança para redefinir a senha.'}
                 </p>
               </div>
 
-              {/* Segmented Rounded Pill Tabs */}
-              <div className="grid w-full grid-cols-2 bg-slate-950 p-1.5 rounded-full border border-slate-800 mb-6">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode('signin');
-                    setErrorMsg(null);
-                    setSuccessMsg(null);
-                  }}
-                  className={`py-2.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${
-                    mode === 'signin'
-                      ? 'bg-sky-600 text-white shadow-md font-bold'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Entrar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode('signup');
-                    setErrorMsg(null);
-                    setSuccessMsg(null);
-                  }}
-                  className={`py-2.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${
-                    mode === 'signup'
-                      ? 'bg-sky-600 text-white shadow-md font-bold'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Criar conta
-                </button>
-              </div>
+              {/* Segmented Pill Switcher */}
+              {mode !== 'recovery' && (
+                <div className="grid w-full grid-cols-2 rounded-full border border-border bg-muted/70 p-1 mb-5 sm:mb-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('signin');
+                      setErrorMsg(null);
+                      setSuccessMsg(null);
+                    }}
+                    className={`rounded-full py-2.5 text-xs sm:text-sm font-semibold transition cursor-pointer ${
+                      mode === 'signin'
+                        ? 'bg-primary text-primary-foreground shadow-xs font-bold'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Entrar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('signup');
+                      setErrorMsg(null);
+                      setSuccessMsg(null);
+                    }}
+                    className={`rounded-full py-2.5 text-xs sm:text-sm font-semibold transition cursor-pointer ${
+                      mode === 'signup'
+                        ? 'bg-primary text-primary-foreground shadow-xs font-bold'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Criar conta
+                  </button>
+                </div>
+              )}
 
               {/* Alerts */}
               {errorMsg && (
-                <div className="p-3.5 mb-5 rounded-2xl bg-red-950/40 border border-red-900/60 text-xs text-red-200 flex items-start gap-2.5">
-                  <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                <div className="mb-5 flex items-start gap-2.5 rounded-2xl border border-destructive/35 bg-destructive/10 p-3.5 text-xs text-destructive">
+                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
                   <span>{errorMsg}</span>
                 </div>
               )}
 
               {successMsg && (
-                <div className="p-4 mb-5 rounded-2xl bg-blue-950/50 border border-blue-500/40 text-xs text-blue-100 flex items-start gap-3 animate-in fade-in">
-                  <CheckCircle2 className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
-                  <div className="space-y-0.5">
-                    <span className="font-semibold text-white block">Status da Ação:</span>
-                    <span className="leading-relaxed">{successMsg}</span>
-                  </div>
+                <div className="mb-5 flex items-start gap-3 rounded-2xl border border-primary/30 bg-primary/10 p-4 text-xs text-foreground animate-in fade-in">
+                  <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                  <span className="leading-relaxed font-medium">{successMsg}</span>
                 </div>
               )}
 
               {/* MODE 1: SIGN IN */}
               {mode === 'signin' && (
-                <form onSubmit={handleSignIn} className="space-y-3" autoComplete="off">
+                <form onSubmit={handleSignIn} className="space-y-4" autoComplete="off">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    <label className="mb-1.5 block text-xs font-semibold text-foreground">
                       E-mail
                     </label>
                     <div className="relative">
-                      <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <Mail className="h-4 w-4 text-muted-foreground absolute left-4 top-1/2 -translate-y-1/2" />
                       <input
                         type="email"
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="Ex: nome@empresa.com" autoComplete="off"
-                        className="w-full pl-10 pr-4 py-3 bg-background border border-input rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-ring focus:ring-2 focus:ring-ring/25 transition-all"
+                        placeholder="nome@empresa.com"
+                        autoComplete="off"
+                        className={`${inputBaseCls} pl-11 pr-4`}
                       />
                     </div>
                   </div>
 
                   <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="block text-xs font-semibold text-slate-300">
+                    <div className="mb-1.5 flex items-center justify-between gap-2">
+                      <label className="block text-xs font-semibold text-foreground">
                         Senha
                       </label>
                       <button
@@ -291,27 +293,28 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
                           setErrorMsg(null);
                           setSuccessMsg(null);
                         }}
-                        className="text-xs text-blue-400 hover:underline cursor-pointer"
+                        className="text-xs font-semibold text-primary hover:underline cursor-pointer"
                       >
                         Esqueceu a senha?
                       </button>
                     </div>
                     <div className="relative">
-                      <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <Lock className="h-4 w-4 text-muted-foreground absolute left-4 top-1/2 -translate-y-1/2" />
                       <input
                         type={showPassword ? 'text' : 'password'}
                         required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="••••••••"
-                        className="w-full pl-10 pr-11 py-3 bg-background border border-input rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-ring focus:ring-2 focus:ring-ring/25 transition-all"
+                        className={`${inputBaseCls} pl-11 pr-11`}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                        aria-label="Alternar visibilidade da senha"
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground cursor-pointer"
                       >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
                   </div>
@@ -319,10 +322,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-3.5 px-6 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-bold text-sm rounded-full transition-all shadow-md cursor-pointer mt-2 disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="mt-2 flex w-full items-center justify-center gap-2 rounded-full bg-primary px-6 py-3.5 text-sm font-bold text-primary-foreground shadow-sm hover:opacity-95 active:scale-[0.98] transition cursor-pointer disabled:opacity-50"
                   >
                     <span>{loading ? 'Entrando...' : 'Entrar na Plataforma'}</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <ArrowRight className="h-4 w-4" />
                   </button>
                 </form>
               )}
@@ -331,45 +334,46 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
               {mode === 'signup' && (
                 <form onSubmit={handleSignUp} className="space-y-4" autoComplete="off">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                      Nome do Estabelecimento ou Responsável *
+                    <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                      Nome da Empresa ou Responsável *
                     </label>
                     <div className="relative">
-                      <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <User className="h-4 w-4 text-muted-foreground absolute left-4 top-1/2 -translate-y-1/2" />
                       <input
                         type="text"
                         required
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        placeholder="Ex: Empório Gourmet & Café"
-                        className="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all"
+                        placeholder="Ex: Minha Empresa"
+                        className={`${inputBaseCls} pl-11 pr-4`}
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    <label className="mb-1.5 block text-xs font-semibold text-foreground">
                       E-mail Comercial *
                     </label>
                     <div className="relative">
-                      <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <Mail className="h-4 w-4 text-muted-foreground absolute left-4 top-1/2 -translate-y-1/2" />
                       <input
                         type="email"
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="Ex: contato@empresa.com" autoComplete="off"
-                        className="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all"
+                        placeholder="contato@empresa.com"
+                        autoComplete="off"
+                        className={`${inputBaseCls} pl-11 pr-4`}
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    <label className="mb-1.5 block text-xs font-semibold text-foreground">
                       Senha de Acesso (mínimo 6 caracteres) *
                     </label>
                     <div className="relative">
-                      <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <Lock className="h-4 w-4 text-muted-foreground absolute left-4 top-1/2 -translate-y-1/2" />
                       <input
                         type={showPassword ? 'text' : 'password'}
                         required
@@ -377,26 +381,28 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="••••••••"
-                        className="w-full pl-10 pr-11 py-3 bg-[#0b101b] border border-[#222f46] rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/25 transition-all"
+                        className={`${inputBaseCls} pl-11 pr-11`}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                        aria-label="Alternar visibilidade da senha"
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground cursor-pointer"
                       >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
                   </div>
 
-                  {/* Pergunta e resposta de recuperação */}
-                  <div className="p-4 rounded-2xl bg-[#0b101b] border border-[#222f46] space-y-2.5">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-white">
-                      <KeyRound className="w-4 h-4 text-blue-400" />
-                      <span>Recuperação de senha *</span>
+                  <div className="rounded-2xl sm:rounded-3xl border border-border bg-muted/45 p-3.5 sm:p-4 space-y-3">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                      <KeyRound className="h-4 w-4 text-primary shrink-0" />
+                      <span>Pergunta de Recuperação de Senha *</span>
                     </div>
                     <div>
-                      <label htmlFor="recovery-question" className="block text-[11px] font-semibold text-slate-300 mb-1">Sua pergunta</label>
+                      <label htmlFor="recovery-question" className="mb-1 block text-[11px] font-semibold text-muted-foreground">
+                        Sua pergunta
+                      </label>
                       <input
                         id="recovery-question"
                         type="text"
@@ -407,11 +413,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
                         value={recoveryQuestion}
                         onChange={(e) => setRecoveryQuestion(e.target.value)}
                         placeholder="Ex: Qual o nome do meu pet?"
-                        className="w-full px-3.5 py-3 bg-[#131c2e] border border-[#222f46] rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                        className="w-full rounded-2xl border border-border bg-card px-3.5 py-2.5 text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition"
                       />
                     </div>
                     <div>
-                      <label htmlFor="recovery-key" className="block text-[11px] font-semibold text-slate-300 mb-1">Sua resposta</label>
+                      <label htmlFor="recovery-key" className="mb-1 block text-[11px] font-semibold text-muted-foreground">
+                        Sua resposta
+                      </label>
                       <input
                         id="recovery-key"
                         type="text"
@@ -422,19 +430,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
                         value={recoveryKey}
                         onChange={(e) => setRecoveryKey(e.target.value)}
                         placeholder="Ex: Thor"
-                        className="w-full px-3.5 py-3 bg-[#131c2e] border border-[#222f46] rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                        className="w-full rounded-2xl border border-border bg-card px-3.5 py-2.5 text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition"
                       />
                     </div>
-                    <p className="text-[11px] text-slate-400">Se esquecer a senha, mostraremos sua pergunta e você digita a resposta. Maiúsculas não importam.</p>
                   </div>
 
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-3.5 px-6 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-bold text-sm rounded-full transition-all shadow-md cursor-pointer mt-2 disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="mt-2 flex w-full items-center justify-center gap-2 rounded-full bg-primary px-6 py-3.5 text-sm font-bold text-primary-foreground shadow-sm hover:opacity-95 active:scale-[0.98] transition cursor-pointer disabled:opacity-50"
                   >
                     <span>{loading ? 'Cadastrando...' : 'Cadastrar e Iniciar'}</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <ArrowRight className="h-4 w-4" />
                   </button>
                 </form>
               )}
@@ -443,39 +450,94 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
               {mode === 'recovery' && (
                 <form onSubmit={handleRecover} className="space-y-4" autoComplete="off">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">E-mail Cadastrado *</label>
-                    <input type="email" required autoComplete="off" readOnly={!!foundQuestion} value={recoveryEmail} onChange={(e) => setRecoveryEmail(e.target.value)} placeholder="Ex: contato@empresa.com" className="w-full px-3.5 py-3 bg-[#131c2e] border border-[#222f46] rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 read-only:opacity-70" />
+                    <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                      E-mail Cadastrado *
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      autoComplete="off"
+                      readOnly={!!foundQuestion}
+                      value={recoveryEmail}
+                      onChange={(e) => setRecoveryEmail(e.target.value)}
+                      placeholder="contato@empresa.com"
+                      className={`${inputBaseCls} px-4 read-only:opacity-70`}
+                    />
                   </div>
                   {foundQuestion && (
                     <>
                       <div>
-                        <label className="block text-xs font-semibold text-slate-300 mb-1.5">Sua pergunta</label>
-                        <p className="px-3.5 py-3 rounded-xl bg-blue-950/40 border border-blue-500/30 text-sm font-semibold text-blue-100">{foundQuestion}</p>
+                        <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                          Sua pergunta de segurança
+                        </label>
+                        <p className="rounded-2xl border border-primary/25 bg-primary/10 px-4 py-3 text-sm font-semibold text-foreground">
+                          {foundQuestion}
+                        </p>
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-slate-300 mb-1.5">Resposta *</label>
-                        <input type="text" required autoComplete="off" value={recoveryKeyInput} onChange={(e) => setRecoveryKeyInput(e.target.value)} placeholder="Digite sua resposta" className="w-full px-3.5 py-3 bg-[#131c2e] border border-[#222f46] rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500" />
+                        <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                          Resposta *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          autoComplete="off"
+                          value={recoveryKeyInput}
+                          onChange={(e) => setRecoveryKeyInput(e.target.value)}
+                          placeholder="Digite sua resposta"
+                          className={`${inputBaseCls} px-4`}
+                        />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-slate-300 mb-1.5">Nova Senha *</label>
+                        <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                          Nova Senha *
+                        </label>
                         <div className="relative">
-                          <input type={showNewPassword ? 'text' : 'password'} required minLength={6} autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Mínimo 6 caracteres" className="w-full px-3.5 py-3 bg-[#131c2e] border border-[#222f46] rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 pr-11" />
-                          <button type="button" aria-label="Mostrar senha" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
-                            {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          <input
+                            type={showNewPassword ? 'text' : 'password'}
+                            required
+                            minLength={6}
+                            autoComplete="new-password"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            placeholder="Mínimo 6 caracteres"
+                            className={`${inputBaseCls} pl-4 pr-11`}
+                          />
+                          <button
+                            type="button"
+                            aria-label="Mostrar senha"
+                            onClick={() => setShowNewPassword(!showNewPassword)}
+                            className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground cursor-pointer"
+                          >
+                            {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                           </button>
                         </div>
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-slate-300 mb-1.5">Confirmar Senha *</label>
-                        <input type="password" required autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Repita a nova senha" className="w-full px-3.5 py-3 bg-[#131c2e] border border-[#222f46] rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500" />
+                        <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                          Confirmar Senha *
+                        </label>
+                        <input
+                          type="password"
+                          required
+                          autoComplete="new-password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          placeholder="Repita a nova senha"
+                          className={`${inputBaseCls} px-4`}
+                        />
                       </div>
                     </>
                   )}
-                  <button type="submit" disabled={loading} className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm rounded-full transition-all shadow-md cursor-pointer disabled:opacity-50">
-                    {loading ? 'Salvando...' : foundQuestion ? 'Redefinir Senha' : 'Continuar'}
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full rounded-full bg-primary py-3.5 text-sm font-bold text-primary-foreground shadow-sm hover:opacity-95 transition cursor-pointer disabled:opacity-50"
+                  >
+                    {loading ? 'Verificando...' : foundQuestion ? 'Redefinir Senha' : 'Continuar'}
                   </button>
 
-                  <div className="text-center pt-2">
+                  <div className="pt-2 text-center">
                     <button
                       type="button"
                       onClick={() => {
@@ -485,9 +547,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
                         setErrorMsg(null);
                         setSuccessMsg(null);
                       }}
-                      className="text-xs text-slate-400 hover:text-white inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition cursor-pointer"
                     >
-                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <ArrowLeft className="h-3.5 w-3.5" />
                       <span>Voltar ao login</span>
                     </button>
                   </div>
@@ -495,11 +557,20 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
               )}
             </div>
 
-            {/* Bottom Security Note */}
-            <p className="mt-6 flex items-center justify-center gap-2 text-center text-xs text-slate-400">
-              <ShieldCheck className="h-4 w-4 text-blue-400" />
-              <span>Seus dados totalmente protegidos.</span>
-            </p>
+            {/* Footer with comfortable spacing between phrases */}
+            <footer className="mt-8 flex flex-col items-center gap-4 text-center px-2">
+              <p className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground">
+                <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
+                <span>Seus dados totalmente protegidos.</span>
+              </p>
+
+              <p className="text-[11px] sm:text-xs text-muted-foreground leading-relaxed">
+                © 2026 <span className="font-bold text-primary">BM CAST</span> · Desenvolvido por{' '}
+                <span className="font-semibold text-primary">Breno Menon</span>{' '}
+                <span className="text-muted-foreground/60">|</span>{' '}
+                <span className="font-bold text-sky-500 dark:text-sky-400">BM Digital</span>
+              </p>
+            </footer>
           </div>
         </div>
       </div>

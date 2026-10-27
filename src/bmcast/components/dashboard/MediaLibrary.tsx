@@ -15,6 +15,7 @@ import {
   SlideCategoryType,
 } from '../../types/signage';
 import { qrService } from '../../services/qrService';
+import { supabaseService } from '../../services/supabaseClient';
 
 interface MediaLibraryProps {
   mediaList: MediaItem[];
@@ -24,12 +25,16 @@ interface MediaLibraryProps {
   onAddToPlaylist: (item: MediaItem) => void;
 }
 
-const CATEGORIES_FILTER: { id: 'all' | SlideCategoryType; label: string; icon: any }[] = [
-  { id: 'all', label: 'Todos os Slides', icon: ImageIcon },
+const CATEGORIES_FILTER: {
+  id: 'all' | SlideCategoryType;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}[] = [
+  { id: 'all', label: 'Todos', icon: ImageIcon },
   { id: 'cardapio', label: 'Cardápio', icon: Utensils },
   { id: 'promo', label: 'Promoção', icon: Flame },
-  { id: 'aviso', label: 'Informativo', icon: Megaphone },
-  { id: 'mural', label: 'Mural de Fotos', icon: ImageIcon },
+  { id: 'aviso', label: 'Avisos', icon: Megaphone },
+  { id: 'mural', label: 'Mural / Foto', icon: ImageIcon },
 ];
 
 export const MediaLibrary: React.FC<MediaLibraryProps> = ({
@@ -41,6 +46,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<'all' | SlideCategoryType>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
   const dropzoneInputRef = useRef<HTMLInputElement | null>(null);
 
   const filteredMedia = mediaList.filter((item) => {
@@ -57,39 +63,47 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
   const handleQuickUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setIsUploading(true);
     try {
-      const dataUrl = await qrService.fileToDataUrl(file);
+      const cloudUrl = await supabaseService.uploadAsset(file, 'library');
+      const finalUrl = cloudUrl || (await qrService.fileToDataUrl(file));
       const cat = selectedCategory === 'all' ? 'cardapio' : selectedCategory;
       const newItem: MediaItem = {
         id: `slide-${Date.now()}`,
         title: file.name.replace(/\.[^/.]+$/, ''),
         type: 'image',
-        url: dataUrl,
-        thumbnail: dataUrl,
+        url: finalUrl,
+        thumbnail: finalUrl,
         durationDefault: 12,
         category: cat,
         createdAt: new Date().toISOString(),
+        dimensions: '1920x1080',
       };
       onEditSlide(newItem);
     } catch (err) {
       console.error('Erro no upload:', err);
+    } finally {
+      setIsUploading(false);
+      e.target.value = '';
     }
   };
 
   return (
     <div className="space-y-4">
       {/* Subheader & Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
-        <div>
-          <h2 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">
-            Biblioteca de Mídias
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
+        <div className="min-w-0">
+          <h2 className="text-base font-extrabold tracking-tight text-foreground">
+            Biblioteca de Mídias da Sua Conta
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            {mediaList.length} itens cadastrados organizados por categoria
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {mediaList.length === 0
+              ? 'Nenhuma mídia cadastrada ainda'
+              : `${mediaList.length} ${mediaList.length === 1 ? 'mídia salva' : 'mídias salvas'} em alta definição`}
           </p>
         </div>
 
-        <div className="flex items-center flex-wrap gap-2.5">
+        <div className="grid grid-cols-2 sm:flex items-center gap-2 shrink-0">
           <input
             type="file"
             ref={dropzoneInputRef}
@@ -98,36 +112,41 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
             className="hidden"
           />
           <button
+            type="button"
+            disabled={isUploading}
             onClick={() => dropzoneInputRef.current?.click()}
-            className="flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-white text-xs font-semibold rounded-full border border-slate-300 dark:border-slate-700 transition-all cursor-pointer shadow-sm"
+            className="inline-flex h-10 sm:h-9 items-center justify-center gap-1.5 rounded-2xl sm:rounded-full border border-border bg-card px-4 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer disabled:opacity-50"
           >
-            <Upload className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-            <span>Upload de Foto</span>
+            <Upload className="h-4 w-4 text-primary shrink-0" />
+            <span>{isUploading ? 'Enviando...' : 'Subir Foto'}</span>
           </button>
           <button
-            onClick={() => onOpenNewSlideModal(selectedCategory === 'all' ? undefined : selectedCategory)}
-            className="flex items-center gap-1.5 px-4 py-2 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white text-xs font-bold rounded-full transition-all cursor-pointer shadow-sm"
+            type="button"
+            onClick={() =>
+              onOpenNewSlideModal(selectedCategory === 'all' ? undefined : selectedCategory)
+            }
+            className="inline-flex h-10 sm:h-9 items-center justify-center gap-1.5 rounded-2xl sm:rounded-full bg-primary px-4 text-xs font-bold text-primary-foreground shadow-xs hover:opacity-95 active:scale-[0.98] transition cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="h-4 w-4 shrink-0" />
             <span>Novo Slide</span>
           </button>
         </div>
       </div>
 
-      {/* Filter Tabs & Search */}
+      {/* Filter Tabs (clean horizontal scroll on mobile) & Search */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-        {/* Clean Segmented Rounded Filter */}
-        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl md:rounded-full border border-slate-200 dark:border-slate-700/80">
+        <div className="-mx-1 px-1 flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
           {CATEGORIES_FILTER.map((cat) => {
             const isSelected = selectedCategory === cat.id;
             return (
               <button
                 key={cat.id}
+                type="button"
                 onClick={() => setSelectedCategory(cat.id)}
-                className={`px-4 py-1.5 rounded-full text-xs transition-all whitespace-nowrap cursor-pointer ${
+                className={`shrink-0 rounded-2xl px-3.5 py-2 text-xs transition whitespace-nowrap cursor-pointer border ${
                   isSelected
-                    ? 'bg-sky-600 text-white font-bold shadow-sm'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium'
+                    ? 'border-primary bg-primary text-primary-foreground font-bold shadow-xs'
+                    : 'border-border bg-card text-muted-foreground hover:text-foreground font-medium'
                 }`}
               >
                 {cat.label}
@@ -136,63 +155,67 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
           })}
         </div>
 
-        {/* Search Input */}
-        <div className="relative w-full md:w-64">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+        <div className="relative w-full md:w-64 shrink-0">
+          <Search className="h-4 w-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Buscar por título ou produto..."
-            className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-full text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors"
+            placeholder="Buscar nos seus slides..."
+            className="w-full rounded-2xl border border-border bg-card pl-10 pr-4 py-2.5 sm:py-2 text-base sm:text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition"
           />
         </div>
       </div>
 
-      {/* Grid of Media Cards or Blank Canvas State */}
+      {/* Grid of Media Cards */}
       {filteredMedia.length === 0 ? (
         <div className="space-y-6">
           {mediaList.length === 0 ? (
-            <div className="bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-3xl p-8 sm:p-12 text-center space-y-4 shadow-sm">
-              <div className="w-16 h-16 rounded-2xl bg-sky-50 dark:bg-sky-950/50 border border-sky-200 dark:border-sky-800 text-sky-600 dark:text-sky-400 flex items-center justify-center mx-auto">
-                <ImageIcon className="w-8 h-8" />
+            <div className="rounded-3xl sm:rounded-[2rem] border border-border bg-card p-6 sm:p-12 text-center space-y-4 shadow-xs">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 text-primary ring-1 ring-primary/25">
+                <ImageIcon className="h-7 w-7" />
               </div>
 
-              <div className="max-w-md mx-auto space-y-1.5">
-                <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight">
-                  Sua biblioteca começa 100% em branco!
+              <div className="mx-auto max-w-md space-y-1.5">
+                <h3 className="text-base sm:text-lg font-extrabold tracking-tight text-foreground">
+                  Sua conta está limpa e pronta para uso
                 </h3>
-                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                  Nenhum dado ou imagem de teste cadastrado. Cadastre os slides da sua empresa: adicione textos, preços, cores de fundo ou envie suas próprias fotos.
+                <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground">
+                  Cadastre suas próprias artes, fotos, cardápios ou comunicados. Tudo o que você criar ficará salvo exclusivamente na sua conta.
                 </p>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-2">
                 <button
+                  type="button"
                   onClick={() => onOpenNewSlideModal(undefined)}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-full transition-all cursor-pointer shadow-sm"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-2xl sm:rounded-full bg-primary px-6 py-3 sm:py-2.5 text-xs sm:text-sm font-bold text-primary-foreground shadow-xs hover:opacity-95 transition cursor-pointer"
                 >
-                  <Plus className="w-4 h-4" />
-                  <span>Criar Novo Slide em Branco</span>
+                  <Plus className="h-4 w-4 shrink-0" />
+                  <span>Criar Primeiro Slide</span>
                 </button>
                 <button
+                  type="button"
                   onClick={() => dropzoneInputRef.current?.click()}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-white font-semibold text-xs sm:text-sm rounded-full border border-slate-300 dark:border-slate-700 transition-all cursor-pointer"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-2xl sm:rounded-full border border-border bg-muted/60 px-6 py-3 sm:py-2.5 text-xs sm:text-sm font-semibold text-foreground hover:bg-muted transition cursor-pointer"
                 >
-                  <Upload className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-                  <span>Upload da Sua Foto</span>
+                  <Upload className="h-4 w-4 text-primary shrink-0" />
+                  <span>Enviar Foto do Dispositivo</span>
                 </button>
               </div>
             </div>
           ) : (
-            <div className="p-10 text-center bg-white dark:bg-slate-800/40 border border-dashed border-slate-300 dark:border-slate-700 rounded-3xl">
-              <p className="text-xs text-slate-500 dark:text-slate-400">Nenhum slide encontrado nesta categoria ou busca.</p>
+            <div className="rounded-3xl border border-dashed border-border bg-card p-8 sm:p-10 text-center">
+              <p className="text-xs text-muted-foreground">
+                Nenhum slide encontrado nesta categoria ou busca.
+              </p>
               <button
+                type="button"
                 onClick={() => {
                   setSelectedCategory('all');
                   setSearchQuery('');
                 }}
-                className="mt-3 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-xs text-sky-600 dark:text-sky-400 hover:underline"
+                className="mt-3 rounded-xl bg-muted px-4 py-2 text-xs font-semibold text-primary hover:underline cursor-pointer"
               >
                 Limpar filtros
               </button>
@@ -205,51 +228,59 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
             const brandCfg = item.brandConfig;
             const qrCfg = item.qrConfig;
             const overlay = item.categoryOverlay;
+            const fitMode = overlay?.imageFit || 'cover';
 
             return (
               <div
                 key={item.id}
-                className="bg-white dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 rounded-2xl overflow-hidden transition-all hover:border-sky-500/50 flex flex-col justify-between shadow-sm"
+                className="flex flex-col justify-between overflow-hidden rounded-3xl border border-border bg-card shadow-xs hover:border-primary/45 transition"
               >
-                {/* Media Image / Clean Background Preview */}
-                <div className="relative aspect-video bg-slate-100 dark:bg-slate-950 overflow-hidden flex items-center justify-center">
-                  {item.thumbnail || item.url ? (
-                    <img
-                      src={item.thumbnail || item.url}
-                      alt={item.title}
-                      className="w-full h-full object-cover"
-                    />
+                <div className="relative aspect-video overflow-hidden bg-zinc-950 flex items-center justify-center">
+                  {item.url ? (
+                    <>
+                      {fitMode === 'contain' && (
+                        <img
+                          src={item.url}
+                          alt=""
+                          aria-hidden="true"
+                          className="absolute inset-0 h-full w-full scale-110 object-cover opacity-35 blur-lg"
+                        />
+                      )}
+                      <img
+                        src={item.url}
+                        alt={item.title}
+                        loading="lazy"
+                        className={`relative z-10 h-full w-full ${
+                          fitMode === 'contain' ? 'object-contain' : 'object-cover'
+                        }`}
+                      />
+                    </>
                   ) : (
                     <div
-                      className="w-full h-full flex flex-col items-center justify-center p-3 text-center"
-                      style={{ backgroundColor: brandCfg?.accentColor || '#0284c7' }}
+                      className="flex h-full w-full flex-col items-center justify-center p-3 text-center"
+                      style={{ backgroundColor: brandCfg?.accentColor || '#2563EB' }}
                     >
-                      <span className="text-white font-extrabold text-sm line-clamp-2">
+                      <span className="line-clamp-2 text-sm font-extrabold text-white">
                         {overlay?.headline || item.title}
                       </span>
                     </div>
                   )}
-                  <span className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full bg-black/70 text-white text-[10px] font-semibold">
-                    {item.durationDefault || 12}s
-                  </span>
                 </div>
 
-                {/* Content */}
-                <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
+                <div className="flex flex-1 flex-col justify-between p-4 space-y-3">
                   <div>
-                    <h3 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm truncate">
+                    <h3 className="truncate text-xs sm:text-sm font-bold text-foreground">
                       {overlay?.headline || item.title}
                     </h3>
 
-                    {/* Metadata with dot separators */}
-                    <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
                       <span className="capitalize">{item.category}</span>
-                      <span aria-hidden="true" className="text-slate-400 dark:text-slate-600">·</span>
-                      <span>{brandCfg?.showBrand ? brandCfg.brandName || 'Com Marca' : 'Sem Marca'}</span>
+                      <span aria-hidden="true">·</span>
+                      <span className="tabular-nums">{item.durationDefault || 12}s</span>
                       {qrCfg?.showQrCode && (
                         <>
-                          <span aria-hidden="true" className="text-slate-400 dark:text-slate-600">·</span>
-                          <span className="text-sky-600 dark:text-sky-300 font-medium">QR</span>
+                          <span aria-hidden="true">·</span>
+                          <span className="font-semibold text-primary">QR</span>
                         </>
                       )}
                     </div>
@@ -261,29 +292,33 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                     )}
                   </div>
 
-                  {/* Actions - Rounded buttons */}
-                  <div className="pt-3 border-t border-slate-200 dark:border-slate-700/80 flex items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
                     <button
+                      type="button"
                       onClick={() => onAddToPlaylist(item)}
-                      className="flex-1 py-1.5 px-3 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white text-xs font-semibold transition-colors cursor-pointer"
+                      className="flex-1 h-9 rounded-xl border border-border bg-muted/60 px-3 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer"
                     >
-                      + Programação
+                      + Exibir na TV
                     </button>
 
                     <button
+                      type="button"
                       onClick={() => onEditSlide(item)}
-                      className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-sky-600 dark:text-sky-400 transition-colors cursor-pointer"
+                      className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-muted/60 text-primary hover:bg-muted transition cursor-pointer"
                       title="Editar"
+                      aria-label="Editar slide"
                     >
-                      <Edit3 className="w-3.5 h-3.5" />
+                      <Edit3 className="h-3.5 w-3.5" />
                     </button>
 
                     <button
+                      type="button"
                       onClick={() => onDeleteSlide(item.id)}
-                      className="p-2 rounded-full bg-slate-100 hover:bg-red-50 dark:bg-slate-800 dark:hover:bg-red-500/20 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors cursor-pointer"
+                      className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-muted/60 text-muted-foreground hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive transition cursor-pointer"
                       title="Excluir"
+                      aria-label="Excluir slide"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 </div>

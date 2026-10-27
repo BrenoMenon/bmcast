@@ -1,29 +1,20 @@
-# Welcome to your Lovable project
+<div align="center">
+<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
+</div>
 
-This project was built with [Lovable](https://lovable.dev).
+# Run and deploy your AI Studio app
 
-## Build with Lovable
+This contains everything you need to run your app locally.
 
-Open your project in the [Lovable editor](https://lovable.dev) and keep building.
+View your app in AI Studio: https://ai.studio/apps/21267880-f8c4-4c13-8e25-6f00cf344036
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: connect the project to GitHub and every change made in Lovable is committed straight to your repository.
-- **Full ownership**: this code is yours. Push to your repository and your changes sync back into Lovable, ready for your next prompt.
+## Run Locally
 
-## Development
+**Prerequisites:**  Node.js
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
 
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
-```
-
-## Built with
-
-- TanStack Start
-- TypeScript
-- React
-- Tailwind CSS
+1. Install dependencies:
+   `npm install`
+2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+3. Run the app:
+   `npm run dev`

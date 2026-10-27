@@ -14,13 +14,13 @@ export const qrService = {
     }
     try {
       return await QRCode.toDataURL(text, {
-        width: 400,
+        width: 800,
         margin: 2,
         color: {
           dark: colorDark,
           light: colorLight,
         },
-        errorCorrectionLevel: 'M',
+        errorCorrectionLevel: 'H',
       });
     } catch (err) {
       console.error('Erro ao gerar QRCode:', err);

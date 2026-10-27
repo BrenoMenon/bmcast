@@ -23,6 +23,7 @@ interface WeatherModalProps {
   currentWeather: WeatherConfig;
   onSave?: ((updated: WeatherConfig) => void) | undefined;
   onSaveWeather?: ((updated: WeatherConfig) => void) | undefined;
+  setupHint?: string | undefined;
 }
 
 export const WeatherModal: React.FC<WeatherModalProps> = ({
@@ -31,6 +32,7 @@ export const WeatherModal: React.FC<WeatherModalProps> = ({
   currentWeather,
   onSave,
   onSaveWeather,
+  setupHint,
 }) => {
   const [selectedWeather, setSelectedWeather] = useState<WeatherConfig>(currentWeather);
   const [searchQuery, setSearchQuery] = useState('');
@@ -48,7 +50,6 @@ export const WeatherModal: React.FC<WeatherModalProps> = ({
     }
   }, [isOpen, currentWeather]);
 
-  // Debounced search
   useEffect(() => {
     if (!searchQuery || searchQuery.trim().length < 2) {
       setSearchResults([]);
@@ -123,7 +124,7 @@ export const WeatherModal: React.FC<WeatherModalProps> = ({
       (err) => {
         console.warn('GPS negado ou indisponível:', err);
         setIsLoadingWeather(false);
-        setGpsStatusMsg('Permissão de GPS não concedida. Selecione uma cidade na lista.');
+        setGpsStatusMsg('Permissão de GPS não concedida. Busque a cidade pelo nome.');
       },
       { timeout: 9000, enableHighAccuracy: true }
     );
@@ -149,142 +150,155 @@ export const WeatherModal: React.FC<WeatherModalProps> = ({
 
   const handleConfirm = () => {
     (onSave || onSaveWeather)?.(selectedWeather);
-    onClose();
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="relative w-full max-w-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-3xl shadow-2xl p-4 sm:p-6 overflow-hidden max-h-[92vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 p-0 sm:p-4 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="relative flex max-h-[94dvh] w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl sm:rounded-[2rem] border border-border bg-card p-4 sm:p-6 text-card-foreground shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between pb-3.5 border-b border-slate-200 dark:border-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-sky-50 dark:bg-sky-500/20 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-500/40 flex items-center justify-center shrink-0">
-              <CloudSun className="w-5 h-5" />
+        <div className="flex items-start justify-between gap-3 pb-3.5 border-b border-border">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary ring-1 ring-primary/25">
+              <CloudSun className="h-5 w-5" />
             </div>
-            <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2 tracking-tight">
-                Previsão do Tempo Oficial
-                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-sky-100 dark:bg-sky-500/15 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-500/30">
-                  Open-Meteo API
-                </span>
+            <div className="min-w-0">
+              <h2 className="text-base font-extrabold tracking-tight text-foreground truncate">
+                Previsão do Tempo ao Vivo
               </h2>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                Dados meteorológicos em tempo real com atualização automática na TV
+              <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                Exibe temperatura e condição climática atualizada na TV
               </p>
             </div>
           </div>
+
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            aria-label="Fechar"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-muted/50 text-muted-foreground hover:text-foreground transition cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Scrollable Body */}
-        <div className="flex-1 overflow-y-auto py-4 space-y-4">
-          {/* Live Weather Preview Card */}
-          <div className="p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 shadow-xs relative overflow-hidden">
-            <div className="absolute top-3 right-3 flex items-center gap-2">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden py-4 space-y-4">
+          {setupHint && (
+            <p className="rounded-2xl border border-primary/25 bg-primary/10 px-3.5 py-2.5 text-xs font-semibold text-primary">
+              {setupHint}
+            </p>
+          )}
+
+          {/* Live Weather Preview Card (Non-overlapping flex header for mobile) */}
+          <div className="rounded-3xl border border-border bg-muted/40 p-4 sm:p-5 space-y-3.5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-primary min-w-0">
+                <MapPin className="h-4 w-4 shrink-0" />
+                <span className="truncate">
+                  {selectedWeather.city}
+                  {selectedWeather.stateCode ? `, ${selectedWeather.stateCode}` : ''}
+                </span>
+              </div>
+
               <button
+                type="button"
                 onClick={handleRefreshCurrent}
                 disabled={isLoadingWeather}
-                className="px-3.5 py-1.5 rounded-full bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs flex items-center gap-1.5 transition-colors cursor-pointer border border-slate-200 dark:border-slate-700 shadow-xs"
-                title="Atualizar agora via API"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer shrink-0"
+                title="Atualizar agora"
               >
-                <RefreshCw className={`w-3.5 h-3.5 text-sky-600 dark:text-sky-400 ${isLoadingWeather ? 'animate-spin' : ''}`} />
+                <RefreshCw
+                  className={`h-3.5 w-3.5 text-primary ${isLoadingWeather ? 'animate-spin' : ''}`}
+                />
                 <span>Atualizar</span>
               </button>
             </div>
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <div className="flex items-center gap-1.5 text-sky-600 dark:text-sky-400 font-bold text-sm">
-                  <MapPin className="w-4 h-4" />
-                  <span>
-                    {selectedWeather.city}
-                    {selectedWeather.stateCode ? `, ${selectedWeather.stateCode}` : ''}
-                  </span>
-                </div>
-                <div className="mt-2 flex items-baseline gap-3">
-                  <span className="text-4xl sm:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                <div className="flex items-baseline gap-3">
+                  <span className="text-4xl sm:text-5xl font-extrabold tracking-tight text-foreground tabular-nums">
                     {selectedWeather.temp}°C
                   </span>
-                  <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  <span className="text-xs sm:text-sm font-semibold text-muted-foreground">
                     {selectedWeather.conditionText}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 mt-1 text-xs text-slate-500 dark:text-slate-400">
+                <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground tabular-nums">
                   <span>Mín: {selectedWeather.tempMin}°C</span>
-                  <span className="text-slate-400">•</span>
+                  <span aria-hidden="true">·</span>
                   <span>Máx: {selectedWeather.tempMax}°C</span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs">
-                <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                  <Droplets className="w-4 h-4 text-sky-500 shrink-0" />
+              <div className="grid grid-cols-2 gap-3 rounded-2xl border border-border bg-card p-3.5 text-xs">
+                <div className="flex items-center gap-2">
+                  <Droplets className="h-4 w-4 text-primary shrink-0" />
                   <div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Umidade</div>
-                    <div className="font-bold text-slate-900 dark:text-white">{selectedWeather.humidity}%</div>
+                    <div className="text-[10px] font-medium text-muted-foreground">Umidade</div>
+                    <div className="font-bold text-foreground tabular-nums">
+                      {selectedWeather.humidity}%
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                  <Wind className="w-4 h-4 text-sky-500 shrink-0" />
+                <div className="flex items-center gap-2">
+                  <Wind className="h-4 w-4 text-primary shrink-0" />
                   <div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Vento</div>
-                    <div className="font-bold text-slate-900 dark:text-white">{selectedWeather.windKmH} km/h</div>
+                    <div className="text-[10px] font-medium text-muted-foreground">Vento</div>
+                    <div className="font-bold text-foreground tabular-nums">
+                      {selectedWeather.windKmH} km/h
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* GPS Feedback notification if active */}
           {gpsStatusMsg && (
-            <div className="p-3 rounded-2xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-500/30 text-xs text-sky-800 dark:text-sky-200 flex items-center gap-2">
-              <Compass className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0 animate-pulse" />
+            <div className="flex items-center gap-2 rounded-2xl border border-primary/25 bg-primary/10 p-3 text-xs text-foreground">
+              <Compass className="h-4 w-4 text-primary shrink-0" />
               <span>{gpsStatusMsg}</span>
             </div>
           )}
 
-          {/* Search City Input & GPS button */}
+          {/* Search City Input & GPS button (Responsive stack on mobile) */}
           <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <div className="relative flex-1 min-w-0">
+                <Search className="h-4 w-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Digite o nome de qualquer cidade (ex: Curitiba, Campinas, Santos)..."
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-full text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-sky-500 transition-colors"
+                  placeholder="Digite o nome da sua cidade..."
+                  className="w-full rounded-2xl border border-border bg-muted/40 pl-10 pr-9 py-2.5 text-base sm:text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:bg-card focus:outline-none transition"
                 />
                 {isSearching && (
                   <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
-                    <RefreshCw className="w-4 h-4 text-sky-500 animate-spin" />
+                    <RefreshCw className="h-4 w-4 text-primary animate-spin" />
                   </div>
                 )}
               </div>
+
               <button
                 type="button"
                 onClick={handleDetectGPS}
                 disabled={isLoadingWeather}
-                className="px-4 py-2.5 bg-sky-600 hover:bg-sky-500 text-white rounded-full text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 shadow-sm disabled:opacity-50"
+                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-2xl bg-primary px-4 text-xs font-bold text-primary-foreground shadow-xs hover:opacity-95 transition cursor-pointer shrink-0 disabled:opacity-50"
               >
-                <Compass className="w-4 h-4" />
-                <span>Usar GPS</span>
+                <Compass className="h-4 w-4 shrink-0" />
+                <span>Usar Meu GPS</span>
               </button>
             </div>
 
-            {/* Search Dropdown Results */}
             {searchResults.length > 0 && (
-              <div className="max-h-48 overflow-y-auto bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-2xl divide-y divide-slate-100 dark:divide-slate-800 shadow-xl">
+              <div className="max-h-48 overflow-y-auto rounded-2xl border border-border bg-card divide-y divide-border shadow-lg">
                 {searchResults.map((city) => (
-                  <div
+                  <button
                     key={`${city.id}-${city.name}`}
+                    type="button"
                     onClick={() =>
                       handleSelectCity(
                         city.name,
@@ -293,36 +307,35 @@ export const WeatherModal: React.FC<WeatherModalProps> = ({
                         city.longitude
                       )
                     }
-                    className="p-3 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer flex items-center justify-between text-xs text-slate-700 dark:text-slate-200 transition-colors"
+                    className="flex w-full items-center justify-between gap-2 p-3 text-left text-xs hover:bg-muted transition cursor-pointer"
                   >
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
-                      <span className="font-semibold text-slate-900 dark:text-white">{city.name}</span>
-                      <span className="text-slate-500 dark:text-slate-400">
-                        {city.admin1 ? `(${city.admin1})` : ''} - {city.country}
+                    <div className="flex items-center gap-2 min-w-0">
+                      <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
+                      <span className="font-semibold text-foreground truncate">{city.name}</span>
+                      <span className="text-muted-foreground truncate">
+                        {city.admin1 ? `(${city.admin1})` : ''} · {city.country}
                       </span>
                     </div>
-                    <span className="text-sky-600 dark:text-sky-400 font-semibold text-[11px]">Selecionar</span>
-                  </div>
+                    <span className="text-[11px] font-bold text-primary shrink-0">Selecionar</span>
+                  </button>
                 ))}
               </div>
             )}
 
-            {/* Quick Popular Cities */}
             <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">
-                Capitais e Cidades Populares:
+              <label className="mb-2 block text-xs font-semibold text-muted-foreground">
+                Atalhos de Capitais:
               </label>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5">
                 {POPULAR_CITIES.map((c) => (
                   <button
                     key={c.name}
                     type="button"
                     onClick={() => handleSelectCity(c.name, c.state, c.lat, c.lon)}
-                    className={`px-3.5 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer ${
+                    className={`rounded-xl border px-3 py-1.5 text-xs font-medium transition cursor-pointer ${
                       selectedWeather.city === c.name
-                        ? 'bg-sky-600 text-white border-sky-500 font-bold shadow-sm'
-                        : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-sky-400'
+                        ? 'border-primary bg-primary text-primary-foreground font-bold shadow-xs'
+                        : 'border-border bg-muted/45 text-foreground hover:bg-muted'
                     }`}
                   >
                     {c.name} ({c.state})
@@ -334,22 +347,24 @@ export const WeatherModal: React.FC<WeatherModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="pt-3.5 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
-          <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-            Última checagem: {new Date(selectedWeather.lastFetchedAt).toLocaleTimeString('pt-BR')}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-border pt-3.5">
+          <span className="text-[11px] text-muted-foreground truncate">
+            Atualizado às {new Date(selectedWeather.lastFetchedAt).toLocaleTimeString('pt-BR')}
           </span>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-full transition-colors cursor-pointer"
+              className="rounded-2xl border border-border px-4 py-2.5 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground transition cursor-pointer"
             >
               Cancelar
             </button>
             <button
+              type="button"
               onClick={handleConfirm}
-              className="flex items-center gap-1.5 px-5 py-2 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white text-xs font-bold rounded-full transition-all cursor-pointer shadow-sm"
+              className="inline-flex flex-1 sm:flex-initial items-center justify-center gap-1.5 rounded-2xl bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground shadow-xs hover:opacity-95 active:scale-[0.98] transition cursor-pointer"
             >
-              <Check className="w-3.5 h-3.5" />
+              <Check className="h-4 w-4 shrink-0" />
               <span>Aplicar na TV</span>
             </button>
           </div>

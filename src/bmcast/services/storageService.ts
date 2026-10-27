@@ -1,4 +1,4 @@
-import { db, DB_CHANGE_EVENT } from './db';
+import { db, DB_CHANGE_EVENT, PublicPlayerBundle } from './db';
 import {
   Screen,
   MediaItem,
@@ -26,6 +26,14 @@ export const storageService = {
 
   async deleteScreen(id: string): Promise<void> {
     db.deleteScreen(id);
+  },
+
+  async generateUniqueShortSlug(preferredBase = 'tv'): Promise<{ slug: string; pairingCode: string }> {
+    return db.generateUniqueShortSlug(preferredBase);
+  },
+
+  async getPublicPlayerBundle(slugOrCode: string): Promise<PublicPlayerBundle> {
+    return db.getPublicPlayerBundle(slugOrCode);
   },
 
   async getMedia(): Promise<MediaItem[]> {
@@ -88,11 +96,19 @@ export const storageService = {
     db.saveWeather(weather);
   },
 
-  async loadDemoPack(): Promise<void> {
-    db.loadDemoPack();
-  },
-
   async clearAll(): Promise<void> {
     db.clearAll();
+  },
+
+  async syncFromSupabase(pushLocalIfRemoteEmpty = true): Promise<{ success: boolean; message: string }> {
+    return db.syncFromSupabase(pushLocalIfRemoteEmpty);
+  },
+
+  async pushAllToSupabase(): Promise<{ success: boolean; message: string }> {
+    return db.pushAllToSupabase();
+  },
+
+  getLastSyncTime(): string | null {
+    return db.getLastSyncTime();
   },
 };

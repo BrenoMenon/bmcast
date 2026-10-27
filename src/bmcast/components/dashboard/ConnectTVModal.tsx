@@ -6,15 +6,14 @@ import {
   Check,
   Play,
   ExternalLink,
-  QrCode,
   Smartphone,
   Monitor,
-  HelpCircle,
-  Wifi,
-  Sparkles,
+  Hash,
+  Link2,
 } from 'lucide-react';
 import { Screen } from '../../types/signage';
 import { qrService } from '../../services/qrService';
+import { supabaseService } from '../../services/supabaseClient';
 
 interface ConnectTVModalProps {
   isOpen: boolean;
@@ -33,7 +32,7 @@ export const ConnectTVModal: React.FC<ConnectTVModalProps> = ({
   onSelectScreenSlug,
   onLaunchPlayer,
 }) => {
-  const [copied, setCopied] = useState(false);
+  const [copiedType, setCopiedType] = useState<'slug' | 'code' | null>(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'link' | 'guide'>('link');
 
@@ -41,23 +40,27 @@ export const ConnectTVModal: React.FC<ConnectTVModalProps> = ({
     screens.find((s) => s.slug === selectedScreenSlug) ||
     screens[0] || {
       id: 'default',
-      name: 'TV Principal 1',
-      slug: 'tv-principal',
-      location: 'Salão',
-      orientation: 'landscape',
-      pairingCode: 'TV-1001',
+      name: 'TV Principal',
+      slug: 'tv1',
+      location: 'Ambiente Principal',
+      orientation: 'landscape' as const,
+      pairingCode: '1024',
     };
 
-  const tvUrl =
-    typeof window !== 'undefined'
-      ? `${window.location.origin}?screen=${activeScreen.slug}`
-      : `https://bmcast.app?screen=${activeScreen.slug}`;
+  const hostDisplay =
+    typeof window !== 'undefined' ? window.location.host : 'seusite.com';
+
+  const numericCode =
+    (activeScreen.pairingCode || '').replace(/\D/g, '').slice(0, 4) || activeScreen.slug;
+
+  const tvShortUrl = supabaseService.buildScreenShareUrl(activeScreen.slug);
+  const tvNumericUrl = supabaseService.buildScreenShareUrl(numericCode);
 
   useEffect(() => {
     let isCancelled = false;
     const generate = async () => {
       try {
-        const dataUrl = await qrService.generateDataUrl(tvUrl, '#000000', '#ffffff');
+        const dataUrl = await qrService.generateDataUrl(tvShortUrl, '#000000', '#ffffff');
         if (!isCancelled) {
           setQrCodeDataUrl(dataUrl);
         }
@@ -73,245 +76,265 @@ export const ConnectTVModal: React.FC<ConnectTVModalProps> = ({
     return () => {
       isCancelled = true;
     };
-  }, [tvUrl, isOpen]);
+  }, [tvShortUrl, isOpen]);
 
   if (!isOpen) return null;
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(tvUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
-  };
-
-  const handleOpenNewTab = () => {
-    window.open(tvUrl, '_blank');
+  const handleCopy = (url: string, type: 'slug' | 'code') => {
+    navigator.clipboard.writeText(url);
+    setCopiedType(type);
+    setTimeout(() => setCopiedType(null), 2500);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200">
-      <div className="relative w-full max-w-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 p-0 sm:p-4 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="relative flex h-[100dvh] sm:h-auto sm:max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-none sm:rounded-[2rem] border-0 sm:border border-border bg-card text-card-foreground shadow-2xl">
         {/* Header */}
-        <div className="p-5 sm:p-6 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-sky-50 dark:bg-sky-500/20 border border-sky-200 dark:border-sky-500/40 text-sky-600 dark:text-sky-400 flex items-center justify-center">
-              <Tv className="w-5 h-5" />
+        <div className="shrink-0 border-b border-border bg-muted/30 px-4 py-3.5 sm:px-6 sm:py-5 space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary ring-1 ring-primary/25">
+                <Tv className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-base sm:text-lg font-extrabold tracking-tight text-foreground truncate">
+                  Conectar Smart TV ou Totem
+                </h3>
+                <p className="text-xs text-muted-foreground leading-snug">
+                  Transmissão otimizada para TVs e Totens com link curto sem símbolos
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight">
-                Conectar com Telões ou Smart TVs
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Acesse o link direto ou aponte a câmera para iniciar a transmissão contínua
-              </p>
-            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Fechar"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground transition cursor-pointer"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+          {/* Clean 2-col Segmented Tabs */}
+          <div className="grid grid-cols-2 gap-1.5 rounded-2xl border border-border bg-muted/70 p-1">
+            <button
+              type="button"
+              onClick={() => setActiveTab('link')}
+              className={`rounded-xl py-2 text-xs font-bold transition cursor-pointer ${
+                activeTab === 'link'
+                  ? 'bg-primary text-primary-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Link Curto &amp; Código
+            </button>
 
-        {/* Tabs */}
-        <div className="px-6 pt-3 flex gap-2 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60">
-          <button
-            type="button"
-            onClick={() => setActiveTab('link')}
-            className={`pb-3 px-3 text-xs font-bold transition-all border-b-2 cursor-pointer ${
-              activeTab === 'link'
-                ? 'border-sky-500 text-sky-600 dark:text-sky-400'
-                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
-            }`}
-          >
-            Link Direto & QR Code
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('guide')}
-            className={`pb-3 px-3 text-xs font-bold transition-all border-b-2 cursor-pointer ${
-              activeTab === 'guide'
-                ? 'border-sky-500 text-sky-600 dark:text-sky-400'
-                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
-            }`}
-          >
-            Como Conectar na sua Marca de TV
-          </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('guide')}
+              className={`rounded-xl py-2 text-xs font-bold transition cursor-pointer ${
+                activeTab === 'guide'
+                  ? 'bg-primary text-primary-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Passo a Passo na TV
+            </button>
+          </div>
         </div>
 
         {/* Modal Body */}
-        <div className="p-5 sm:p-6 space-y-6 overflow-y-auto flex-1">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 space-y-5">
           {activeTab === 'link' ? (
-            <div className="space-y-6">
-              {/* Screen Selector if multiple */}
+            <div className="space-y-4">
               {screens.length > 1 && (
-                <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="rounded-2xl border border-border bg-muted/40 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                   <div>
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Escolha a TV a conectar:</span>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Cada tela pode ter seu próprio link e programação.</p>
+                    <span className="text-xs font-bold text-foreground">Selecionar TV:</span>
+                    <p className="text-[11px] text-muted-foreground">
+                      Cada TV possui seu próprio atalho curto independente.
+                    </p>
                   </div>
                   <select
                     value={activeScreen.slug}
                     onChange={(e) => onSelectScreenSlug(e.target.value)}
-                    className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2 text-xs text-slate-800 dark:text-white font-semibold focus:outline-none focus:border-sky-500"
+                    className="rounded-xl border border-border bg-card px-3.5 py-2 text-base sm:text-xs font-semibold text-foreground focus:border-primary focus:outline-none"
                   >
                     {screens.map((sc) => (
-                      <option key={sc.id} value={sc.slug} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">
-                        {sc.name} ({sc.location}) - {sc.orientation === 'landscape' ? '16:9' : '9:16'}
+                      <option key={sc.id} value={sc.slug} className="bg-card text-foreground">
+                        {sc.name} ({sc.orientation === 'landscape' ? '16:9' : '9:16'})
                       </option>
                     ))}
                   </select>
                 </div>
               )}
 
-              {/* Main Connecting Card */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/80 rounded-3xl p-5 sm:p-6 shadow-xs">
-                {/* QR Code Container */}
-                <div className="md:col-span-5 flex flex-col items-center justify-center p-4 bg-white rounded-2xl shadow-md text-center space-y-2 border border-slate-200">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center rounded-3xl border border-border bg-muted/35 p-4 sm:p-6">
+                {/* High-Clarity QR Code */}
+                <div className="md:col-span-5 flex flex-col items-center justify-center rounded-2xl border border-border bg-white p-4 text-center space-y-2 shadow-sm">
                   {qrCodeDataUrl ? (
                     <img
                       src={qrCodeDataUrl}
                       alt="QR Code da TV"
-                      className="w-44 h-44 sm:w-48 sm:h-48 object-contain"
+                      className="h-40 w-40 sm:h-44 sm:w-44 object-contain"
                     />
                   ) : (
-                    <div className="w-44 h-44 flex items-center justify-center text-slate-400">
+                    <div className="flex h-40 w-40 items-center justify-center text-xs text-slate-400">
                       Gerando QR...
                     </div>
                   )}
                   <p className="text-[11px] font-bold text-slate-900">
-                    Aponte a câmera da TV ou celular
+                    Escaneie para abrir direto
                   </p>
                 </div>
 
-                {/* Info and Actions */}
-                <div className="md:col-span-7 space-y-4">
+                {/* Simplified Short URLs for TV Remotes */}
+                <div className="md:col-span-7 space-y-4 min-w-0">
                   <div>
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 dark:bg-sky-500/15 border border-sky-200 dark:border-sky-500/30 text-[11px] font-bold text-sky-700 dark:text-sky-400 mb-2">
-                      <Wifi className="w-3.5 h-3.5" />
-                      <span>Transmissão Instantânea Contínua</span>
-                    </div>
-
-                    <h4 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+                    <h4 className="text-base sm:text-lg font-extrabold tracking-tight text-foreground truncate">
                       {activeScreen.name}
                     </h4>
-                    <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
-                      Código de Pareamento Rápido:{' '}
-                      <strong className="text-sky-600 dark:text-sky-400 font-extrabold text-sm tracking-wider">
-                        {activeScreen.pairingCode || 'TV-1001'}
-                      </strong>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Escolha a forma mais fácil de abrir no navegador da sua Smart TV:
                     </p>
                   </div>
 
-                  {/* URL Box with Copy Icon BEFORE text */}
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider block">
-                      Link Direto do Player da TV:
-                    </label>
+                  {/* Option 1: Short Slug URL (e.g. dominio.com/tv1) */}
+                  <div className="rounded-2xl border border-border bg-card p-3.5 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <Link2 className="h-3.5 w-3.5 text-primary" />
+                        <span>Opção 1 · Link Curto Direto</span>
+                      </span>
+                    </div>
 
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                      <div className="flex-1 px-3.5 py-2.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700/80 rounded-xl text-xs text-slate-800 dark:text-slate-200 font-mono truncate select-all">
-                        {tvUrl}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                      <div className="min-w-0 flex-1 rounded-xl border border-border bg-muted/50 px-3 py-2 font-mono text-xs sm:text-sm font-bold text-primary truncate select-all">
+                        {hostDisplay}/{activeScreen.slug}
                       </div>
-
                       <button
                         type="button"
-                        onClick={handleCopy}
-                        className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold transition-all cursor-pointer shrink-0 shadow-sm ${
-                          copied
+                        onClick={() => handleCopy(tvShortUrl, 'slug')}
+                        className={`inline-flex h-10 sm:h-9 items-center justify-center gap-1.5 rounded-xl px-4 text-xs font-bold transition cursor-pointer shrink-0 ${
+                          copiedType === 'slug'
                             ? 'bg-emerald-600 text-white'
-                            : 'bg-sky-600 hover:bg-sky-500 text-white active:scale-95'
+                            : 'bg-primary text-primary-foreground hover:opacity-95'
                         }`}
                       >
-                        {copied ? (
+                        {copiedType === 'slug' ? (
                           <>
-                            <Check className="w-4 h-4" />
-                            <span>Link Copiado!</span>
+                            <Check className="h-3.5 w-3.5" />
+                            <span>Copiado</span>
                           </>
                         ) : (
                           <>
-                            <Copy className="w-4 h-4" />
-                            <span>Copiar Link da TV</span>
+                            <Copy className="h-3.5 w-3.5" />
+                            <span>Copiar</span>
                           </>
                         )}
                       </button>
                     </div>
                   </div>
 
+                  {/* Option 2: 4-Digit Numeric Short Link */}
+                  <div className="rounded-2xl border border-border bg-card p-3.5 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <Hash className="h-3.5 w-3.5 text-primary" />
+                        <span>Opção 2 · Link Curto Numérico</span>
+                      </span>
+                      <div className="mt-1 flex items-baseline gap-2 flex-wrap">
+                        <span className="font-mono text-sm sm:text-base font-extrabold text-foreground truncate select-all">
+                          {hostDisplay}/{numericCode}
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(tvNumericUrl, 'code')}
+                      className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border bg-muted/60 px-3 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer shrink-0"
+                    >
+                      {copiedType === 'code' ? (
+                        <Check className="h-3.5 w-3.5 text-emerald-500" />
+                      ) : (
+                        <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                      )}
+                      <span>{copiedType === 'code' ? 'Copiado' : 'Copiar'}</span>
+                    </button>
+                  </div>
+
                   {/* Launch Actions */}
-                  <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
                     <button
                       type="button"
                       onClick={() => {
                         onClose();
                         onLaunchPlayer(activeScreen.slug);
                       }}
-                      className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white text-xs font-bold rounded-full transition-all cursor-pointer shadow-sm"
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-xs font-bold text-primary-foreground shadow-xs hover:opacity-95 active:scale-[0.98] transition cursor-pointer"
                     >
-                      <Play className="w-3.5 h-3.5 fill-current" />
-                      <span>Iniciar Transmissão Agora</span>
+                      <Play className="h-3.5 w-3.5 fill-current shrink-0" />
+                      <span>Iniciar Player Agora</span>
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={handleOpenNewTab}
-                      className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white text-xs font-semibold rounded-full border border-slate-300 dark:border-slate-700 transition-colors cursor-pointer shadow-xs"
+                    <a
+                      href={tvShortUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer"
                     >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      <span>Testar em Nova Aba</span>
-                    </button>
+                      <ExternalLink className="h-3.5 w-3.5 text-primary shrink-0" />
+                      <span>Abrir em Nova Aba</span>
+                    </a>
                   </div>
                 </div>
               </div>
             </div>
           ) : (
-            /* Guide Tab */
-            <div className="space-y-4">
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 space-y-2">
-                <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Tv className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-                  <span>Smart TVs Samsung (Tizen)</span>
+            <div className="space-y-3">
+              <div className="rounded-2xl border border-border bg-muted/35 p-4 space-y-2">
+                <h4 className="flex items-center gap-2 text-sm font-bold text-foreground">
+                  <Tv className="h-4 w-4 text-primary shrink-0" />
+                  <span>Smart TVs Samsung e LG</span>
                 </h4>
-                <ol className="text-xs text-slate-600 dark:text-slate-300 space-y-1.5 list-decimal list-inside leading-relaxed">
-                  <li>No controle da TV, abra a barra de aplicativos e clique em <strong>Internet</strong> (ou Navegador Web).</li>
-                  <li>Na barra de endereço do navegador da TV, digite o link copiado ou aponte o celular pro QR Code.</li>
-                  <li>Clique no ícone de <strong>Tela Cheia</strong> para esconder a barra de navegação. A TV rodará os slides 24 horas por dia!</li>
+                <ol className="list-decimal list-inside space-y-1.5 text-xs leading-relaxed text-muted-foreground">
+                  <li>
+                    Abra o aplicativo <strong>Internet / Navegador Web</strong> na sua Smart TV.
+                  </li>
+                  <li>
+                    Digite apenas <strong className="font-mono text-foreground">{hostDisplay}/{activeScreen.slug}</strong> ou <strong className="font-mono text-foreground">{hostDisplay}/{numericCode}</strong> (sem símbolos complicados).
+                  </li>
+                  <li>
+                    Ative a <strong>Tela Cheia</strong> para transmissão otimizada para TVs e Totens.
+                  </li>
                 </ol>
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 space-y-2">
-                <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Tv className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-                  <span>Smart TVs LG (webOS)</span>
+              <div className="rounded-2xl border border-border bg-muted/35 p-4 space-y-2">
+                <h4 className="flex items-center gap-2 text-sm font-bold text-foreground">
+                  <Smartphone className="h-4 w-4 text-primary shrink-0" />
+                  <span>Android TV, Google TV, Fire TV Stick e TV Box</span>
                 </h4>
-                <ol className="text-xs text-slate-600 dark:text-slate-300 space-y-1.5 list-decimal list-inside leading-relaxed">
-                  <li>Pressione o botão Home do controle Magic Remote e abra o app <strong>Navegador da Web</strong>.</li>
-                  <li>Digite a URL da sua tela. O sistema carrega seus slides, tempo e letreiro instantaneamente.</li>
-                  <li>Toque no botão de maximizar para rodar em tela cheia sem interrupções.</li>
+                <ol className="list-decimal list-inside space-y-1.5 text-xs leading-relaxed text-muted-foreground">
+                  <li>
+                    Abra o navegador instalado na TV (como <strong>TV Bro</strong>, <strong>Silk</strong> ou <strong>Chrome</strong>).
+                  </li>
+                  <li>
+                    Digite o atalho curto <strong className="font-mono text-foreground">{hostDisplay}/{activeScreen.slug}</strong> e salve nos favoritos da TV para abrir com 1 clique.
+                  </li>
                 </ol>
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 space-y-2">
-                <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Smartphone className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-                  <span>Android TV / Google TV / Fire Stick / TV Box</span>
+              <div className="rounded-2xl border border-border bg-muted/35 p-4 space-y-2">
+                <h4 className="flex items-center gap-2 text-sm font-bold text-foreground">
+                  <Monitor className="h-4 w-4 text-primary shrink-0" />
+                  <span>Totem Digital ou Mini PC via Cabo HDMI</span>
                 </h4>
-                <ol className="text-xs text-slate-600 dark:text-slate-300 space-y-1.5 list-decimal list-inside leading-relaxed">
-                  <li>Na Google Play Store da TV, instale o navegador <strong>Chrome</strong> ou <strong>TV Bro</strong>.</li>
-                  <li>Acesse o link da tela ou defina-o como página inicial do navegador para iniciar automaticamente ao ligar a TV.</li>
-                </ol>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 space-y-2">
-                <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Monitor className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-                  <span>Computador / Mini PC ligado via Cabo HDMI</span>
-                </h4>
-                <ol className="text-xs text-slate-600 dark:text-slate-300 space-y-1.5 list-decimal list-inside leading-relaxed">
-                  <li>Abra o link no navegador Chrome ou Edge.</li>
-                  <li>Pressione a tecla <strong>F11</strong> no teclado para ativar a Tela Cheia nativa.</li>
+                <ol className="list-decimal list-inside space-y-1.5 text-xs leading-relaxed text-muted-foreground">
+                  <li>Abra o link curto no navegador Chrome ou Edge.</li>
+                  <li>Pressione <strong>F11</strong> para entrar em tela cheia limpa em alta resolução.</li>
                 </ol>
               </div>
             </div>
@@ -319,15 +342,15 @@ export const ConnectTVModal: React.FC<ConnectTVModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-          <span className="text-xs text-slate-500 dark:text-slate-400">
-            Dúvidas? Suas alterações no painel aparecem na TV em menos de 1 segundo.
+        <div className="shrink-0 flex items-center justify-between gap-3 border-t border-border bg-muted/30 px-4 py-3.5 sm:px-6 sm:py-4">
+          <span className="text-xs text-muted-foreground">
+            Alterações feitas no painel atualizam automaticamente na TV.
           </span>
 
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-full border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer shadow-xs"
+            className="rounded-2xl border border-border bg-card px-5 py-2 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer shrink-0"
           >
             Fechar
           </button>

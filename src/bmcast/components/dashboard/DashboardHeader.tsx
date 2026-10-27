@@ -1,23 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
-  Play,
   CloudSun,
   Store,
   Radio,
   Plus,
   LogOut,
-  Menu,
-  X,
-  Tv,
   HelpCircle,
-  Database,
   Sun,
   Moon,
-  Sparkles,
   Wifi,
+  ChevronDown,
 } from 'lucide-react';
 import { Logo } from '../common/Logo';
 import { WeatherConfig, Screen, CompanyBrandProfile } from '../../types/signage';
+import { authService } from '../../services/authService';
 
 interface DashboardHeaderProps {
   screens: Screen[];
@@ -33,7 +29,6 @@ interface DashboardHeaderProps {
   onOpenNewSlideModal: () => void;
   onOpenConnectTVModal: () => void;
   onOpenTutorialModal: () => void;
-  onOpenSupabaseModal: () => void;
   onLaunchPlayer: (slug: string) => void;
   onSignOut?: (() => void) | undefined;
 }
@@ -52,296 +47,223 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   onOpenNewSlideModal,
   onOpenConnectTVModal,
   onOpenTutorialModal,
-  onOpenSupabaseModal,
-  onLaunchPlayer,
   onSignOut,
 }) => {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const currentUser = authService.getCurrentUser();
+
+  useEffect(() => {
+    const handleClickOutside = (ev: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(ev.target as Node)) {
+        setProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const displayName = brandProfile.name || currentUser?.name || 'Minha Empresa';
+  const initials =
+    displayName
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() || '')
+      .join('') || 'BM';
 
   return (
-    <header className="border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md sticky top-0 z-40 transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
-        {/* Left: Brand mark + Screen Selector */}
-        <div className="flex items-center gap-3 sm:gap-5">
-          <Logo size="md" />
-
-          {screens.length > 0 && (
-            <div className="hidden md:flex items-center gap-2 pl-3 border-l border-slate-200 dark:border-slate-700">
-              <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">TV Ativa:</span>
-              <select
-                value={selectedScreenSlug}
-                onChange={(e) => onSelectScreenSlug(e.target.value)}
-                className="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-full px-3.5 py-1.5 text-xs text-slate-800 dark:text-white font-medium focus:outline-none focus:border-sky-500 cursor-pointer transition-colors"
-              >
-                {screens.map((sc) => (
-                  <option key={sc.id} value={sc.slug} className="bg-white dark:bg-slate-800 text-slate-800 dark:text-white">
-                    {sc.name} ({sc.orientation === 'landscape' ? '16:9' : '9:16'})
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+    <header className="sticky top-0 z-30 flex h-15 sm:h-16 items-center justify-between gap-2 border-b border-border bg-background/85 px-3 backdrop-blur-md sm:px-6 lg:px-8 transition-colors">
+      {/* Left: Mobile Logo + Active TV Selector + Live Weather */}
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <div className="md:hidden shrink-0">
+          <Logo size="sm" showSubtitle={false} />
         </div>
 
-        {/* Center / Right Zone: Rounded Controls */}
-        <div className="hidden lg:flex items-center gap-2">
-          {/* Weather Button */}
-          <button
-            onClick={onOpenWeatherModal}
-            className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-200 transition-all cursor-pointer shadow-xs"
-            title="Previsão do Tempo Oficial via API / GPS"
-          >
-            <CloudSun className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-            <span className="font-bold text-slate-900 dark:text-white">{weather.temp}°C</span>
-            <span className="text-slate-400 dark:text-slate-500">·</span>
-            <span className="text-slate-600 dark:text-slate-300 max-w-[100px] truncate">{weather.city}</span>
-          </button>
-
-          {/* Letreiro */}
-          <button
-            onClick={onOpenTickerModal}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-200 transition-all cursor-pointer shadow-xs"
-            title="Personalizar letreiro rotativo no rodapé"
-          >
-            <Radio className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
-            <span>Letreiro</span>
-          </button>
-
-          {/* Identidade */}
-          <button
-            onClick={onOpenBrandModal}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-200 transition-all cursor-pointer shadow-xs"
-            title="Nome, logotipo e cores da sua empresa"
-          >
-            <Store className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
-            <span>Empresa</span>
-          </button>
-
-          {/* Tutorial / Ajuda */}
-          <button
-            onClick={onOpenTutorialModal}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-200 transition-all cursor-pointer shadow-xs"
-            title="Guia rápido passo a passo de como usar a TV"
-          >
-            <HelpCircle className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
-            <span>Tutorial</span>
-          </button>
-
-
-          {/* Light / Dark Mode Toggle */}
-          <button
-            onClick={onToggleTheme}
-            className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 text-slate-700 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white transition-all cursor-pointer shadow-xs"
-            title={themeMode === 'dark' ? 'Ativar Modo Claro' : 'Ativar Modo Escuro'}
-          >
-            {themeMode === 'dark' ? (
-              <Sun className="w-4 h-4 text-amber-500" />
-            ) : (
-              <Moon className="w-4 h-4 text-sky-600" />
-            )}
-          </button>
-
-          <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-1" />
-
-          {/* Conectar TV Button */}
-          <button
-            onClick={onOpenConnectTVModal}
-            className="flex items-center gap-1.5 px-4 py-2 bg-sky-50 dark:bg-slate-800 hover:bg-sky-100 dark:hover:bg-slate-700 border border-sky-300 dark:border-sky-500/50 text-sky-800 dark:text-sky-300 rounded-full text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
-            title="Gerar Link e QR Code para Telões e TVs"
-          >
-            <Wifi className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
-            <span>Conectar TV</span>
-          </button>
-
-          {/* Criar Slide - Primary Blue */}
-          <button
-            onClick={onOpenNewSlideModal}
-            className="flex items-center gap-1.5 px-4 py-2 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white rounded-full text-xs font-bold transition-all cursor-pointer shadow-sm"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Criar Slide</span>
-          </button>
-
-          {/* Logout */}
-          {onSignOut && (
-            <button
-              onClick={onSignOut}
-              className="p-2 rounded-full text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors cursor-pointer"
-              title="Sair"
+        {screens.length > 0 && (
+          <div className="hidden sm:flex items-center gap-2 min-w-0">
+            <span className="hidden lg:inline text-xs font-semibold text-muted-foreground whitespace-nowrap">
+              TV Ativa:
+            </span>
+            <select
+              value={selectedScreenSlug}
+              onChange={(e) => onSelectScreenSlug(e.target.value)}
+              aria-label="Selecionar TV Ativa"
+              className="max-w-[175px] xl:max-w-[230px] truncate rounded-full border border-border bg-muted/65 px-3.5 py-1.5 text-xs font-semibold text-foreground focus:border-primary focus:outline-none cursor-pointer transition"
             >
-              <LogOut className="w-4 h-4" />
-            </button>
-          )}
-        </div>
+              {screens.map((sc) => (
+                <option key={sc.id} value={sc.slug} className="bg-card text-foreground">
+                  {sc.name} ({sc.orientation === 'landscape' ? '16:9' : '9:16'})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
-        {/* Mobile Header Buttons */}
-        <div className="flex lg:hidden items-center gap-1.5">
-          {/* Theme switch mobile */}
-          <button
-            onClick={onToggleTheme}
-            className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs"
-            title="Alternar Tema"
-          >
-            {themeMode === 'dark' ? (
-              <Sun className="w-4 h-4 text-amber-500" />
-            ) : (
-              <Moon className="w-4 h-4 text-sky-600" />
-            )}
-          </button>
-
-          {/* Conectar TV mobile */}
-          <button
-            onClick={onOpenConnectTVModal}
-            className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-sky-600 dark:text-sky-400 border border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs"
-            title="Conectar TV"
-          >
-            <Tv className="w-4 h-4" />
-          </button>
-
-          {/* Criar Slide mobile */}
-          <button
-            onClick={onOpenNewSlideModal}
-            className="flex items-center gap-1 px-3 py-1.5 bg-sky-600 text-white rounded-full text-xs font-bold cursor-pointer active:scale-95 shadow-sm"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Slide</span>
-          </button>
-
-          {/* Hamburger toggle */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label={mobileMenuOpen ? 'Fechar menu' : 'Abrir menu'}
-            aria-expanded={mobileMenuOpen}
-            className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs"
-          >
-            {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={onOpenWeatherModal}
+          className="hidden md:inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/60 px-3.5 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition cursor-pointer whitespace-nowrap"
+          title="Configurar cidade e previsão do tempo ao vivo"
+        >
+          <CloudSun className="h-3.5 w-3.5 text-primary shrink-0" />
+          <span className="font-bold tabular-nums">{weather.temp}°C</span>
+          <span className="text-muted-foreground">·</span>
+          <span className="max-w-[110px] truncate text-muted-foreground">{weather.city}</span>
+        </button>
       </div>
 
-      {/* Mobile Drawer */}
-      {mobileMenuOpen && (
-        <div className="lg:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3.5 space-y-3 animate-in slide-in-from-top-2 duration-150">
-          {screens.length > 0 && (
-            <div className="space-y-1">
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold">Tela da TV Selecionada:</span>
-              <select
-                value={selectedScreenSlug}
-                onChange={(e) => {
-                  onSelectScreenSlug(e.target.value);
-                  setMobileMenuOpen(false);
+      {/* Right: Connect TV + Primary CTA + Icon-Only Theme Switcher + Profile Dropdown */}
+      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <button
+          type="button"
+          onClick={onOpenConnectTVModal}
+          className="flex h-9 w-9 sm:w-auto sm:px-3.5 items-center justify-center gap-1.5 rounded-full border border-border bg-card text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer whitespace-nowrap shrink-0"
+          title="Link rápido e código para Smart TV"
+          aria-label="Conectar Smart TV"
+        >
+          <Wifi className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-primary shrink-0" />
+          <span className="hidden lg:inline">Conectar TV</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={onOpenNewSlideModal}
+          className="inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-3 sm:px-4 text-xs font-bold text-primary-foreground shadow-xs hover:opacity-95 active:scale-[0.98] transition cursor-pointer whitespace-nowrap shrink-0"
+        >
+          <Plus className="h-3.5 w-3.5 shrink-0" />
+          <span className="sm:hidden">Slide</span>
+          <span className="hidden sm:inline">Criar Slide</span>
+        </button>
+
+        {/* ICON-ONLY LIGHT/DARK THEME TOGGLE */}
+        <button
+          type="button"
+          onClick={onToggleTheme}
+          aria-label={themeMode === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
+          title={themeMode === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground transition cursor-pointer shrink-0"
+        >
+          {themeMode === 'dark' ? (
+            <Sun className="h-4 w-4" />
+          ) : (
+            <Moon className="h-4 w-4" />
+          )}
+        </button>
+
+        {/* User / Station Avatar Dropdown */}
+        <div className="relative" ref={menuRef}>
+          <button
+            type="button"
+            onClick={() => setProfileMenuOpen((v) => !v)}
+            aria-label="Abrir menu da conta"
+            aria-expanded={profileMenuOpen}
+            className="flex h-9 items-center gap-1.5 sm:gap-2 rounded-full border border-border bg-card p-1 pr-2 sm:pr-2.5 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer"
+          >
+            {brandProfile.logoUrl ? (
+              <img
+                src={brandProfile.logoUrl}
+                alt={displayName}
+                className="h-7 w-7 rounded-full object-cover ring-1 ring-border"
+              />
+            ) : (
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-[11px] font-bold text-primary">
+                {initials}
+              </span>
+            )}
+            <span className="hidden xl:inline max-w-[120px] truncate">{displayName}</span>
+            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          </button>
+
+          {profileMenuOpen && (
+            <div className="absolute right-0 mt-2 w-[min(16.5rem,calc(100vw-1.5rem))] origin-top-right rounded-3xl border border-border bg-popover p-2 text-popover-foreground shadow-xl animate-in fade-in zoom-in-95 duration-150 z-50">
+              <div className="px-3 py-2.5 border-b border-border/80 mb-1">
+                <p className="text-xs font-bold text-foreground truncate">{displayName}</p>
+                {currentUser?.email && (
+                  <p className="text-[11px] text-muted-foreground truncate">{currentUser.email}</p>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setProfileMenuOpen(false);
+                  onOpenBrandModal();
                 }}
-                className="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white"
+                className="flex w-full items-center gap-2.5 rounded-2xl px-3 py-2.5 text-xs font-medium text-foreground hover:bg-muted transition cursor-pointer"
               >
-                {screens.map((sc) => (
-                  <option key={sc.id} value={sc.slug} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
-                    {sc.name} ({sc.location})
-                  </option>
-                ))}
-              </select>
+                <Store className="h-4 w-4 text-primary shrink-0" />
+                <span>Dados da Empresa &amp; Conta</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setProfileMenuOpen(false);
+                  onOpenWeatherModal();
+                }}
+                className="flex w-full items-center gap-2.5 rounded-2xl px-3 py-2.5 text-xs font-medium text-foreground hover:bg-muted transition cursor-pointer"
+              >
+                <CloudSun className="h-4 w-4 text-primary shrink-0" />
+                <span>Clima ao Vivo ({weather.temp}°C)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setProfileMenuOpen(false);
+                  onOpenTickerModal();
+                }}
+                className="flex w-full items-center gap-2.5 rounded-2xl px-3 py-2.5 text-xs font-medium text-foreground hover:bg-muted transition cursor-pointer"
+              >
+                <Radio className="h-4 w-4 text-primary shrink-0" />
+                <span>Letreiro de Rodapé</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setProfileMenuOpen(false);
+                  onOpenConnectTVModal();
+                }}
+                className="flex w-full items-center gap-2.5 rounded-2xl px-3 py-2.5 text-xs font-medium text-foreground hover:bg-muted transition cursor-pointer"
+              >
+                <Wifi className="h-4 w-4 text-primary shrink-0" />
+                <span>Link &amp; Código da TV</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setProfileMenuOpen(false);
+                  onOpenTutorialModal();
+                }}
+                className="flex w-full items-center gap-2.5 rounded-2xl px-3 py-2.5 text-xs font-medium text-foreground hover:bg-muted transition cursor-pointer"
+              >
+                <HelpCircle className="h-4 w-4 text-primary shrink-0" />
+                <span>Como Usar na Smart TV</span>
+              </button>
+
+              {onSignOut && (
+                <>
+                  <div className="my-1 border-t border-border/80" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProfileMenuOpen(false);
+                      onSignOut();
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-2xl px-3 py-2.5 text-xs font-semibold text-destructive hover:bg-destructive/10 transition cursor-pointer"
+                  >
+                    <LogOut className="h-4 w-4 shrink-0" />
+                    <span>Sair da Conta</span>
+                  </button>
+                </>
+              )}
             </div>
           )}
-
-          <div className="grid grid-cols-2 gap-2 pt-1">
-            <button
-              onClick={() => {
-                onOpenWeatherModal();
-                setMobileMenuOpen(false);
-              }}
-              className="flex items-center gap-2 p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-left text-xs text-slate-800 dark:text-slate-200 cursor-pointer shadow-xs"
-            >
-              <CloudSun className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0" />
-              <div>
-                <div className="font-bold text-slate-900 dark:text-white">{weather.temp}°C</div>
-                <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{weather.city}</div>
-              </div>
-            </button>
-
-            <button
-              onClick={() => {
-                onOpenConnectTVModal();
-                setMobileMenuOpen(false);
-              }}
-              className="flex items-center gap-2 p-2.5 rounded-2xl bg-sky-50 dark:bg-slate-800 border border-sky-300 dark:border-sky-500/40 text-left text-xs text-sky-800 dark:text-slate-200 cursor-pointer shadow-xs"
-            >
-              <Wifi className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0" />
-              <div>
-                <div className="font-bold text-sky-900 dark:text-white">Conectar TV</div>
-                <div className="text-[10px] text-sky-600 dark:text-slate-400">Link &amp; QR Code</div>
-              </div>
-            </button>
-
-            <button
-              onClick={() => {
-                onOpenBrandModal();
-                setMobileMenuOpen(false);
-              }}
-              className="flex items-center gap-2 p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-left text-xs text-slate-800 dark:text-slate-200 cursor-pointer shadow-xs"
-            >
-              <Store className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
-              <div>
-                <div className="font-bold text-slate-900 dark:text-white">Empresa</div>
-                <div className="text-[10px] text-slate-500 dark:text-slate-400">Logo e Cores</div>
-              </div>
-            </button>
-
-            <button
-              onClick={() => {
-                onOpenTickerModal();
-                setMobileMenuOpen(false);
-              }}
-              className="flex items-center gap-2 p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-left text-xs text-slate-800 dark:text-slate-200 cursor-pointer shadow-xs"
-            >
-              <Radio className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
-              <div>
-                <div className="font-bold text-slate-900 dark:text-white">Letreiro</div>
-                <div className="text-[10px] text-slate-500 dark:text-slate-400">Rodapé da TV</div>
-              </div>
-            </button>
-
-            <button
-              onClick={() => {
-                onOpenTutorialModal();
-                setMobileMenuOpen(false);
-              }}
-              className="flex items-center gap-2 p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-left text-xs text-slate-800 dark:text-slate-200 cursor-pointer shadow-xs"
-            >
-              <HelpCircle className="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0" />
-              <div>
-                <div className="font-bold text-slate-900 dark:text-white">Tutorial</div>
-                <div className="text-[10px] text-slate-500 dark:text-slate-400">Como usar a TV</div>
-              </div>
-            </button>
-
-            <button
-              onClick={() => {
-                onOpenBrandModal();
-                setMobileMenuOpen(false);
-              }}
-              className="flex items-center gap-2 p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-left text-xs text-slate-800 dark:text-slate-200 cursor-pointer shadow-xs"
-            >
-              <Database className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <div>
-                <div className="font-bold text-slate-900 dark:text-white">Minha Conta</div>
-                <div className="text-[10px] text-slate-500 dark:text-slate-400">Senha e segurança</div>
-              </div>
-            </button>
-
-            {onSignOut && (
-              <button
-                onClick={() => {
-                  onSignOut();
-                  setMobileMenuOpen(false);
-                }}
-                className="col-span-2 flex items-center justify-center gap-2 p-2.5 rounded-2xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 text-xs text-red-600 dark:text-red-300 cursor-pointer"
-              >
-                <LogOut className="w-4 h-4 text-red-500 dark:text-red-400" />
-                <span className="font-bold">Desconectar da Conta</span>
-              </button>
-            )}
-          </div>
         </div>
-      )}
+      </div>
     </header>
   );
 };

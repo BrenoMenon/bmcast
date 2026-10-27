@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BM CAST - Sistema Profissional de TV e Mídia Indoor</title>
+    <meta name="description" content="Plataforma completa de Digital Signage para TV corporativa, cardápio digital, murais informativos e letreiros otimizada para TVs e totens." />
+    <meta property="og:title" content="BM CAST - Sistema Profissional de TV e Mídia Indoor" />
+    <meta property="og:description" content="Plataforma completa de Digital Signage para TV corporativa, cardápio digital, murais informativos e letreiros otimizada para TVs e totens." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem('bmcast_theme_mode');
+          var mode = saved === 'light' ? 'light' : 'dark';
+          var root = document.documentElement;
+          root.classList.remove('light', 'dark');
+          root.classList.add(mode);
+          root.style.colorScheme = mode;
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body class="antialiased bg-background text-foreground selection:bg-primary selection:text-primary-foreground">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

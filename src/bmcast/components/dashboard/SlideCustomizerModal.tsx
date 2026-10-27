@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   Upload,
-  Sparkles,
   Store,
   Clock,
   Image as ImageIcon,
@@ -14,10 +13,9 @@ import {
   Sliders,
   Palette,
   QrCode,
-  Tag,
   AlertCircle,
-  Search,
   CheckCircle2,
+  Maximize2,
 } from 'lucide-react';
 import {
   MediaItem,
@@ -31,6 +29,7 @@ import {
   CompanyBrandProfile,
 } from '../../types/signage';
 import { qrService } from '../../services/qrService';
+import { supabaseService } from '../../services/supabaseClient';
 
 interface SlideCustomizerModalProps {
   isOpen: boolean;
@@ -43,41 +42,36 @@ interface SlideCustomizerModalProps {
 
 const CATEGORIES: {
   id: SlideCategoryType;
+  shortTitle: string;
   title: string;
-  badge: string;
-  desc: string;
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
   defaultAccent: string;
 }[] = [
   {
     id: 'cardapio',
+    shortTitle: 'Cardápio',
     title: 'Cardápio & Preços',
-    badge: 'CARDÁPIO',
-    desc: 'Pratos, hambúrgueres, pizzas, bebidas e itens com preços.',
     icon: Utensils,
     defaultAccent: '#2563EB',
   },
   {
     id: 'promo',
-    title: 'Super Promoção & Ofertas',
-    badge: 'PROMOÇÃO',
-    desc: 'Ofertas com tempo limitado, descontos e combos especiais.',
+    shortTitle: 'Promoção',
+    title: 'Promoção & Ofertas',
     icon: Flame,
     defaultAccent: '#EF4444',
   },
   {
     id: 'aviso',
-    title: 'Quadro de Avisos & Wi-Fi',
-    badge: 'AVISO IMPORTANTE',
-    desc: 'Horários, Wi-Fi da loja, regras e comunicados corporativos.',
+    shortTitle: 'Avisos',
+    title: 'Quadro de Avisos',
     icon: Megaphone,
     defaultAccent: '#10B981',
   },
   {
     id: 'mural',
-    title: 'Mural de Fotos & Institucional',
-    badge: 'COMUNICADO',
-    desc: 'Fotos de novidades, ambiente e mensagens institucionais.',
+    shortTitle: 'Mural / Foto',
+    title: 'Mural & Institucional',
     icon: ImageIcon,
     defaultAccent: '#8B5CF6',
   },
@@ -96,6 +90,9 @@ const COLOR_PRESETS = [
   { name: 'Grafite Escuro', hex: '#334155' },
 ];
 
+const inputCls =
+  'w-full min-w-0 rounded-2xl border border-border bg-card px-3.5 py-2.5 text-base sm:text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition';
+
 export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
   isOpen,
   onClose,
@@ -106,18 +103,19 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
 }) => {
   const [mobileTab, setMobileTab] = useState<'edit' | 'preview'>('edit');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [previewImgError, setPreviewImgError] = useState(false);
+  const [uploadingAsset, setUploadingAsset] = useState(false);
 
   const [title, setTitle] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [imageFit, setImageFit] = useState<'cover' | 'contain'>('cover');
   const [selectedCategory, setSelectedCategory] = useState<SlideCategoryType>('cardapio');
   const [durationSeconds, setDurationSeconds] = useState(12);
   const [addToActivePlaylist, setAddToActivePlaylist] = useState(true);
-
-  // Overlay Darkness
-  const [overlayDarkness, setOverlayDarkness] = useState<number>(0); // 0 to 100
+  const [overlayDarkness, setOverlayDarkness] = useState<number>(0);
 
   // Brand config
-  const [showBrand, setShowBrand] = useState(true);
+  const [showBrand, setShowBrand] = useState(false);
   const [brandName, setBrandName] = useState('');
   const [brandSlogan, setBrandSlogan] = useState('');
   const [brandLogo, setBrandLogo] = useState('');
@@ -147,10 +145,12 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const qrImageInputRef = useRef<HTMLInputElement | null>(null);
-  const brandLogoInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     setErrorMessage(null);
+    setMobileTab('edit');
+    setPreviewImgError(false);
+
     if (initialItem) {
       setTitle(initialItem.title || '');
       setImageUrl(initialItem.url || '');
@@ -158,7 +158,7 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
       setDurationSeconds(initialItem.durationDefault || 12);
 
       const b = initialItem.brandConfig;
-      setShowBrand(b ? b.showBrand : true);
+      setShowBrand(b ? b.showBrand : Boolean(companyProfile.name));
       setBrandName(b?.brandName || companyProfile.name || '');
       setBrandSlogan(b?.brandSlogan || companyProfile.slogan || '');
       setBrandLogo(b?.brandLogo || companyProfile.logoUrl || '');
@@ -166,10 +166,11 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
       setAccentColor(b?.accentColor || companyProfile.accentColor || '#2563EB');
 
       const o = initialItem.categoryOverlay;
+      setImageFit(o?.imageFit || 'cover');
       setShowOverlayBadge(o?.showOverlayBadge === true);
       setShowPriceTag(o?.showPriceTag === true);
       setBadgeText(o?.badgeText || '');
-      setHeadline(o?.headline || initialItem.title || '');
+      setHeadline(o?.headline || '');
       setSubheadline(o?.subheadline || '');
       setPriceOriginal(o?.priceOriginal || '');
       setPricePromo(o?.pricePromo || '');
@@ -189,7 +190,8 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
       const targetCat = CATEGORIES.find((c) => c.id === targetCatId) || CATEGORIES[0];
 
       setTitle('');
-      setImageUrl(''); // 100% BLANK AS REQUESTED!
+      setImageUrl('');
+      setImageFit('cover');
       setSelectedCategory(targetCatId);
       setDurationSeconds(12);
 
@@ -198,7 +200,7 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
       setBrandSlogan(companyProfile.slogan || '');
       setBrandLogo(companyProfile.logoUrl || '');
       setBrandPosition('top-left');
-      setAccentColor(targetCat?.defaultAccent || '#2563EB');
+      setAccentColor(companyProfile.accentColor || targetCat?.defaultAccent || '#2563EB');
 
       setShowOverlayBadge(false);
       setShowPriceTag(false);
@@ -223,10 +225,10 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
   useEffect(() => {
     let isCancelled = false;
     const generate = async () => {
-      if (qrCodeType === 'generated') {
+      if (qrCodeType === 'generated' && showQrCode) {
         try {
           const dataUrl = await qrService.generateDataUrl(
-            qrCodeUrl || 'https://bmcast.app',
+            qrCodeUrl.trim() || window.location.origin,
             '#000000',
             '#ffffff'
           );
@@ -242,90 +244,63 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
     return () => {
       isCancelled = true;
     };
-  }, [qrCodeUrl, qrCodeType]);
+  }, [qrCodeUrl, qrCodeType, showQrCode]);
 
   const handleCategorySelect = (catId: SlideCategoryType) => {
     setSelectedCategory(catId);
     const cat = CATEGORIES.find((c) => c.id === catId);
-    if (!cat) return;
-
-    setAccentColor(cat.defaultAccent);
-    setBadgeText(cat.badge);
-
-    if (catId === 'cardapio') {
-      setHeadline('Item Especial do Cardápio');
-      setSubheadline('Descrição detalhada dos ingredientes e acompanhamentos');
-      setPriceOriginal('R$ 49,90');
-      setPricePromo('R$ 38,90');
-      setQrCodeLabel('Peça pelo WhatsApp');
-      setShowPriceTag(true);
-    } else if (catId === 'promo') {
-      setHeadline('Super Oferta da Semana');
-      setSubheadline('Aproveite nossa condição exclusiva por tempo limitado');
-      setPriceOriginal('R$ 89,90');
-      setPricePromo('R$ 59,90');
-      setQrCodeLabel('Garantir Desconto');
-      setShowPriceTag(true);
-    } else if (catId === 'aviso') {
-      setHeadline('Aviso Importante');
-      setSubheadline('Consulte nossos atendentes ou conecte-se pelo QR Code');
-      setPriceOriginal('');
-      setPricePromo('');
-      setQrCodeLabel('Conectar Wi-Fi');
-      setShowPriceTag(false);
-    } else {
-      setHeadline('Comunicado Institucional');
-      setSubheadline('Agradecemos a sua preferência e visita ao nosso espaço');
-      setPriceOriginal('');
-      setPricePromo('');
-      setQrCodeLabel('Siga no Instagram');
-      setShowPriceTag(false);
+    if (cat && !initialItem) {
+      setAccentColor(cat.defaultAccent);
     }
   };
 
   const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setUploadingAsset(true);
     try {
-      const dataUrl = await qrService.fileToDataUrl(file);
-      setImageUrl(dataUrl);
-      if (!title || title === 'Novo Slide') {
+      const cloudUrl = await supabaseService.uploadAsset(file, 'slides');
+      const finalUrl = cloudUrl || (await qrService.fileToDataUrl(file));
+      setImageUrl(finalUrl);
+      setPreviewImgError(false);
+      if (!title.trim()) {
         setTitle(file.name.replace(/\.[^/.]+$/, ''));
       }
       setErrorMessage(null);
     } catch (err) {
       console.error('Erro na imagem:', err);
+      setErrorMessage('Não foi possível carregar esta imagem. Tente outro arquivo.');
+    } finally {
+      setUploadingAsset(false);
     }
   };
 
   const handleCustomQrFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setUploadingAsset(true);
     try {
-      const dataUrl = await qrService.fileToDataUrl(file);
-      setQrCodeCustomImage(dataUrl);
+      const cloudUrl = await supabaseService.uploadAsset(file, 'qrcodes');
+      const finalUrl = cloudUrl || (await qrService.fileToDataUrl(file));
+      setQrCodeCustomImage(finalUrl);
       setQrCodeType('custom_upload');
     } catch (err) {
       console.error('Erro no QR:', err);
-    }
-  };
-
-  const handleBrandLogoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const dataUrl = await qrService.fileToDataUrl(file);
-      setBrandLogo(dataUrl);
-    } catch (err) {
-      console.error('Erro no logo:', err);
+    } finally {
+      setUploadingAsset(false);
     }
   };
 
   const handleSave = () => {
-    if (!imageUrl) {
-      setErrorMessage('Por favor, selecione ou envie uma imagem de fundo para o slide.');
+    if (!imageUrl.trim() && !headline.trim() && !title.trim()) {
+      setErrorMessage('Envie uma imagem para o slide ou preencha o título principal.');
+      setMobileTab('edit');
       return;
     }
+
+    const cleanBadge = badgeText.trim();
+    const cleanHeadline = headline.trim();
+    const resolvedTitle = title.trim() || cleanHeadline || 'Slide da TV';
 
     const slideBrand: SlideBrandConfig = {
       showBrand,
@@ -334,7 +309,7 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
       brandLogo: brandLogo.trim(),
       brandPosition,
       accentColor,
-      badgeText: badgeText.trim(),
+      badgeText: cleanBadge,
     };
 
     const slideQr: SlideQrCodeConfig = {
@@ -348,25 +323,26 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
     };
 
     const slideOverlay: CategoryOverlayConfig = {
-      badgeText: badgeText.trim(),
-      headline: headline.trim() || title,
+      badgeText: cleanBadge,
+      headline: cleanHeadline,
       subheadline: subheadline.trim(),
       priceOriginal: priceOriginal.trim(),
       pricePromo: pricePromo.trim(),
       accentColor,
-      showOverlayBadge,
+      showOverlayBadge: Boolean(cleanBadge) ? true : showOverlayBadge,
       showPriceTag,
       position: 'bottom',
       overlayOpacity: overlayDarkness,
       discountPercent: discountBadge.trim(),
+      imageFit,
     };
 
     const savedMediaItem: MediaItem = {
       id: initialItem?.id || `slide-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      title: title.trim() || headline.trim() || 'Slide BM CAST',
+      title: resolvedTitle,
       type: 'image',
-      url: imageUrl,
-      thumbnail: imageUrl,
+      url: imageUrl.trim(),
+      thumbnail: imageUrl.trim(),
       durationDefault: Number(durationSeconds) || 12,
       category: selectedCategory,
       createdAt: initialItem?.createdAt || new Date().toISOString(),
@@ -385,71 +361,86 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
   const resolvedQrImage =
     qrCodeType === 'custom_upload' && qrCodeCustomImage ? qrCodeCustomImage : generatedQrDataUrl;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-150">
-      <div className="relative w-full max-w-6xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-3xl overflow-hidden flex flex-col max-h-[95vh] shadow-2xl">
-        {/* Modal Top Bar */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/90">
-          <div>
-            <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-              <span>{initialItem ? 'Editar Slide da TV' : 'Criar Novo Slide'}</span>
-            </h2>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              Personalização completa: cores, fotos, preços, marca e QR Code dinâmico
-            </p>
-          </div>
+  const hasBottomContent = Boolean(
+    badgeText.trim() ||
+      headline.trim() ||
+      subheadline.trim() ||
+      (showPriceTag && (priceOriginal.trim() || pricePromo.trim()))
+  );
 
-          <div className="flex items-center gap-2">
-            {/* Mobile Tab */}
-            <div className="flex lg:hidden bg-slate-100 dark:bg-slate-800 p-0.5 rounded-full border border-slate-200 dark:border-slate-700">
-              <button
-                type="button"
-                onClick={() => setMobileTab('edit')}
-                className={`px-3 py-1 rounded-full text-[11px] font-bold transition-all ${
-                  mobileTab === 'edit' ? 'bg-sky-600 text-white shadow-xs' : 'text-slate-600 dark:text-slate-400'
-                }`}
-              >
-                Ajustes
-              </button>
-              <button
-                type="button"
-                onClick={() => setMobileTab('preview')}
-                className={`px-3 py-1 rounded-full text-[11px] font-bold transition-all ${
-                  mobileTab === 'preview' ? 'bg-sky-600 text-white shadow-xs' : 'text-slate-600 dark:text-slate-400'
-                }`}
-              >
-                Preview TV
-              </button>
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 p-0 sm:p-4 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="relative flex h-[100dvh] sm:h-auto sm:max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-none sm:rounded-[2rem] border-0 sm:border border-border bg-card text-card-foreground shadow-2xl">
+        {/* Modal Header: 2 clean rows on mobile so zero text gets squished */}
+        <div className="shrink-0 border-b border-border bg-muted/30 px-4 py-3 sm:px-6 sm:py-4 space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-lg font-extrabold tracking-tight text-foreground truncate">
+                {initialItem ? 'Editar Slide da TV' : 'Criar Novo Slide'}
+              </h2>
+              <p className="text-xs text-muted-foreground leading-snug">
+                Envie sua arte em alta definição ou adicione textos, preços e QR Code.
+              </p>
             </div>
 
             <button
+              type="button"
               onClick={onClose}
-              className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              aria-label="Fechar"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground transition cursor-pointer"
             >
-              <X className="w-5 h-5" />
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Mobile Tab Switcher: Full-width clean 2-col grid */}
+          <div className="grid grid-cols-2 gap-1.5 rounded-2xl border border-border bg-muted/70 p-1 lg:hidden">
+            <button
+              type="button"
+              onClick={() => setMobileTab('edit')}
+              className={`rounded-xl py-2 text-xs font-bold transition cursor-pointer ${
+                mobileTab === 'edit'
+                  ? 'bg-primary text-primary-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Ajustes do Slide
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileTab('preview')}
+              className={`rounded-xl py-2 text-xs font-bold transition cursor-pointer ${
+                mobileTab === 'preview'
+                  ? 'bg-primary text-primary-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Simulador da TV
             </button>
           </div>
         </div>
 
-        {/* Error message banner */}
         {errorMessage && (
-          <div className="px-5 py-2.5 bg-red-50 dark:bg-red-950/60 border-b border-red-200 dark:border-red-800 text-xs text-red-700 dark:text-red-200 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+          <div className="shrink-0 flex items-center gap-2 border-b border-destructive/30 bg-destructive/10 px-4 sm:px-6 py-2.5 text-xs font-medium text-destructive">
+            <AlertCircle className="h-4 w-4 shrink-0" />
             <span>{errorMessage}</span>
           </div>
         )}
 
         {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto grid grid-cols-1 lg:grid-cols-12 gap-5 p-4 sm:p-6">
+        <div className="grid flex-1 grid-cols-1 gap-4 sm:gap-5 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:grid-cols-12">
           {/* Form Column */}
-          <div className={`lg:col-span-7 space-y-4 ${mobileTab === 'preview' ? 'hidden lg:block' : 'block'}`}>
-            {/* Category Selector Tabs */}
-            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-3.5 space-y-2">
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider block">
-                Tipo do Slide:
+          <div
+            className={`min-w-0 space-y-4 lg:col-span-7 ${
+              mobileTab === 'preview' ? 'hidden lg:block' : 'block'
+            }`}
+          >
+            {/* Category Selector */}
+            <div className="rounded-3xl border border-border bg-muted/35 p-4 space-y-2.5">
+              <span className="block text-xs font-bold uppercase tracking-wider text-foreground">
+                Categoria de Organização
               </span>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {CATEGORIES.map((cat) => {
                   const Icon = cat.icon;
                   const isSel = selectedCategory === cat.id;
@@ -458,30 +449,32 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
                       key={cat.id}
                       type="button"
                       onClick={() => handleCategorySelect(cat.id)}
-                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1 ${
+                      className={`flex items-center sm:flex-col sm:items-start gap-2 rounded-2xl border p-3 text-left transition cursor-pointer min-w-0 ${
                         isSel
-                          ? 'bg-sky-600 text-white border-sky-500 shadow-sm font-bold'
-                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'
+                          ? 'border-primary bg-primary text-primary-foreground shadow-xs font-bold'
+                          : 'border-border bg-card text-foreground hover:bg-muted/60 font-medium'
                       }`}
                     >
-                      <Icon className="w-4 h-4" />
-                      <span className="text-xs leading-tight">{cat.title.split('&')[0]}</span>
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span className="text-xs leading-tight truncate">{cat.shortTitle}</span>
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* 1. Imagem de Fundo */}
-            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
-                  01. Imagem de Fundo (16:9 Full HD)
+            {/* 1. Imagem de Fundo em Alta Qualidade */}
+            <div className="rounded-3xl border border-border bg-muted/35 p-4 space-y-3.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+                  01. Imagem do Slide (Alta Nitidez)
                 </span>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400">1920x1080</span>
+                <span className="font-mono text-[11px] text-muted-foreground shrink-0">
+                  Full HD / 4K
+                </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -491,67 +484,129 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
                 />
                 <button
                   type="button"
+                  disabled={uploadingAsset}
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center justify-center gap-2 py-2.5 px-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
+                  className="flex h-11 sm:h-10 items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-xs font-bold text-primary-foreground shadow-xs hover:opacity-95 transition cursor-pointer disabled:opacity-50"
                 >
-                  <Upload className="w-4 h-4" />
-                  <span>Enviar Foto do Computador / Celular</span>
+                  <Upload className="h-4 w-4 shrink-0" />
+                  <span>{uploadingAsset ? 'Carregando foto...' : 'Enviar Foto / Arte'}</span>
                 </button>
 
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={imageUrl}
-                    onChange={(e) => {
-                      setImageUrl(e.target.value);
-                      setErrorMessage(null);
-                    }}
-                    placeholder="Ou cole o link direto da imagem..."
-                    className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-sky-500 transition-colors"
-                  />
-                </div>
+                <input
+                  type="url"
+                  value={imageUrl.startsWith('data:') ? '' : imageUrl}
+                  onChange={(e) => {
+                    setImageUrl(e.target.value);
+                    setPreviewImgError(false);
+                    setErrorMessage(null);
+                  }}
+                  placeholder={
+                    imageUrl.startsWith('data:')
+                      ? 'Arquivo enviado do dispositivo'
+                      : 'Ou cole o link direto da imagem...'
+                  }
+                  className={inputCls}
+                />
               </div>
 
-              {/* Image Status & Clear Action */}
-              <div className="pt-2 border-t border-slate-200 dark:border-slate-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                {imageUrl ? (
-                  <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold">
-                    <CheckCircle2 className="w-4 h-4 shrink-0" />
-                    <span className="truncate max-w-xs">Foto anexada ao slide</span>
-                    <button
-                      type="button"
-                      onClick={() => setImageUrl('')}
-                      className="px-2.5 py-1 rounded-lg bg-red-100 hover:bg-red-200 dark:bg-red-500/20 dark:hover:bg-red-500/30 text-red-700 dark:text-red-300 text-[11px] font-bold border border-red-200 dark:border-red-500/40 cursor-pointer transition-colors"
-                    >
-                      Remover Imagem (Deixar em Branco)
-                    </button>
+              <div>
+                <label className="mb-1 block text-[11px] font-medium text-muted-foreground">
+                  Nome de identificação interna do slide
+                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Ex: Arte Principal Balcão"
+                  className={inputCls}
+                />
+              </div>
+
+              {imageUrl ? (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-card px-3.5 py-2.5 text-xs">
+                  <div className="flex items-center gap-2 font-semibold text-emerald-600 dark:text-emerald-400 min-w-0">
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                    <span className="truncate">Imagem carregada em qualidade original</span>
                   </div>
-                ) : (
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Nenhuma foto selecionada. O slide usará fundo limpo na sua cor de destaque.
-                  </span>
-                )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImageUrl('');
+                      setPreviewImgError(false);
+                    }}
+                    className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-1.5 text-[11px] font-bold text-destructive hover:bg-destructive/15 transition cursor-pointer shrink-0"
+                  >
+                    Remover
+                  </button>
+                </div>
+              ) : (
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Envie uma arte pronta (JPG, PNG ou WebP) ou crie um aviso apenas com fundo colorido.
+                </p>
+              )}
+
+              {/* Image Fit Mode (Zero Crop vs Fullscreen 16:9) */}
+              <div className="space-y-2 border-t border-border/70 pt-3">
+                <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                  <Maximize2 className="h-3.5 w-3.5 text-primary shrink-0" />
+                  <span>Enquadramento da Imagem na TV:</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setImageFit('cover')}
+                    className={`rounded-2xl border px-3 py-2.5 text-left text-xs transition cursor-pointer ${
+                      imageFit === 'cover'
+                        ? 'border-primary bg-primary/10 font-bold text-foreground'
+                        : 'border-border bg-card text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <div className="font-bold text-foreground">Preencher Tela 16:9</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Ocupa 100% da TV sem bordas
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setImageFit('contain')}
+                    className={`rounded-2xl border px-3 py-2.5 text-left text-xs transition cursor-pointer ${
+                      imageFit === 'contain'
+                        ? 'border-primary bg-primary/10 font-bold text-foreground'
+                        : 'border-border bg-card text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <div className="font-bold text-foreground">Imagem Inteira (Sem Corte)</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Exibe toda a arte com fundo desfocado
+                    </div>
+                  </button>
+                </div>
               </div>
 
-              {/* Overlay Darkness Slider */}
-              <div className="pt-2 border-t border-slate-200 dark:border-slate-700/60 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300">
-                  <Sliders className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
-                  <span>Contraste / Escurecimento do Fundo:</span>
+              {/* Background Dimming: Responsive 4-column grid so zero mobile overflow */}
+              <div className="space-y-2 border-t border-border/70 pt-3">
+                <div className="flex items-center justify-between gap-2 text-xs">
+                  <span className="flex items-center gap-2 font-semibold text-foreground">
+                    <Sliders className="h-3.5 w-3.5 text-primary shrink-0" />
+                    <span>Escurecer fundo (para leitura de textos):</span>
+                  </span>
+                  <span className="font-mono text-[11px] font-bold text-primary">
+                    {overlayDarkness === 0 ? 'Original (0%)' : `${overlayDarkness}%`}
+                  </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  {[30, 50, 70, 85].map((val) => (
+                <div className="grid grid-cols-4 gap-2">
+                  {[0, 30, 50, 75].map((val) => (
                     <button
                       key={val}
                       type="button"
                       onClick={() => setOverlayDarkness(val)}
-                      className={`px-2.5 py-1 rounded-full text-[11px] font-bold cursor-pointer transition-colors ${
+                      className={`rounded-xl py-2 text-xs font-bold transition cursor-pointer ${
                         overlayDarkness === val
-                          ? 'bg-sky-600 text-white'
-                          : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                          ? 'bg-primary text-primary-foreground shadow-xs'
+                          : 'border border-border bg-card text-muted-foreground hover:text-foreground'
                       }`}
                     >
-                      {val}%
+                      {val === 0 ? '0% Puro' : `${val}%`}
                     </button>
                   ))}
                 </div>
@@ -559,144 +614,150 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
             </div>
 
             {/* 2. Cores e Estilo */}
-            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-4 space-y-3">
+            <div className="rounded-3xl border border-border bg-muted/35 p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-                  <Palette className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
-                  <span>02. Cor de Destaque &amp; Identidade Visual</span>
+                <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-foreground">
+                  <Palette className="h-3.5 w-3.5 text-primary shrink-0" />
+                  <span>02. Cor de Destaque</span>
                 </span>
-                <span className="text-xs font-mono font-bold text-sky-600 dark:text-sky-400">{accentColor}</span>
+                <span className="font-mono text-xs font-bold text-primary">{accentColor}</span>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2.5">
                 {COLOR_PRESETS.map((c) => (
                   <button
                     key={c.hex}
                     type="button"
                     onClick={() => setAccentColor(c.hex)}
-                    className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+                    className={`flex h-8 w-8 items-center justify-center rounded-full transition cursor-pointer ${
                       accentColor.toUpperCase() === c.hex.toUpperCase()
-                        ? 'ring-2 ring-sky-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 scale-110 shadow'
-                        : 'opacity-85 hover:opacity-100 hover:scale-105'
+                        ? 'scale-110 ring-2 ring-primary ring-offset-2 ring-offset-card shadow'
+                        : 'opacity-85 hover:scale-105 hover:opacity-100'
                     }`}
                     style={{ backgroundColor: c.hex }}
                     title={c.name}
                   >
                     {accentColor.toUpperCase() === c.hex.toUpperCase() && (
-                      <Check className="w-3.5 h-3.5 text-white drop-shadow" />
+                      <Check className="h-3.5 w-3.5 text-white drop-shadow" />
                     )}
                   </button>
                 ))}
 
-                {/* Free Color Picker */}
-                <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200 dark:border-slate-700">
-                  <label className="text-[11px] text-slate-600 dark:text-slate-300 font-semibold cursor-pointer">
-                    Cor Livre:
-                  </label>
+                <div className="flex items-center gap-1.5 border-l border-border pl-2.5">
+                  <label className="text-[11px] font-semibold text-muted-foreground">Livre:</label>
                   <input
                     type="color"
                     value={accentColor}
                     onChange={(e) => setAccentColor(e.target.value)}
-                    className="w-8 h-8 rounded-full border border-slate-300 dark:border-slate-600 bg-transparent cursor-pointer"
+                    className="brand-color-input h-8 w-8 rounded-full border border-border bg-transparent cursor-pointer"
                     title="Escolha qualquer cor personalizada"
                   />
                 </div>
               </div>
             </div>
 
-            {/* 3. Textos, Badge e Preços */}
-            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-4 space-y-3">
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider block">
-                03. Título, Destaques e Valores
-              </span>
+            {/* 3. Textos, Badge e Preços (Opcionais) */}
+            <div className="rounded-3xl border border-border bg-muted/35 p-4 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="block text-xs font-bold uppercase tracking-wider text-foreground">
+                  03. Textos e Preços na Tela (Opcional)
+                </span>
+                <span className="text-[11px] text-muted-foreground">Deixe vazio se a arte já tiver texto</span>
+              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
                 <div>
-                  <label className="block text-[11px] text-slate-600 dark:text-slate-400 mb-1 font-medium">Etiqueta Badge</label>
+                  <label className="mb-1 block text-[11px] font-medium text-muted-foreground">
+                    Etiqueta Superior
+                  </label>
                   <input
                     type="text"
                     value={badgeText}
-                    onChange={(e) => setBadgeText(e.target.value)}
-                    placeholder="Ex: MAIS PEDIDO"
-                    className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white uppercase focus:outline-none focus:border-sky-500 font-bold transition-colors"
+                    onChange={(e) => {
+                      setBadgeText(e.target.value);
+                      setShowOverlayBadge(Boolean(e.target.value.trim()));
+                    }}
+                    placeholder="Ex: DESTAQUE"
+                    className={`${inputCls} font-bold uppercase`}
                   />
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="block text-[11px] text-slate-600 dark:text-slate-400 mb-1 font-medium">Título do Slide / Produto</label>
+                  <label className="mb-1 block text-[11px] font-medium text-muted-foreground">
+                    Título Exibido na TV
+                  </label>
                   <input
                     type="text"
                     value={headline}
                     onChange={(e) => setHeadline(e.target.value)}
-                    placeholder="Ex: Combo Especial Smash Burger"
-                    className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white font-bold focus:outline-none focus:border-sky-500 transition-colors"
+                    placeholder="Digite o título (opcional)"
+                    className={`${inputCls} font-bold`}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[11px] text-slate-600 dark:text-slate-400 mb-1 font-medium">Descrição Detalhada</label>
+                <label className="mb-1 block text-[11px] font-medium text-muted-foreground">
+                  Subtítulo ou Descrição
+                </label>
                 <input
                   type="text"
                   value={subheadline}
                   onChange={(e) => setSubheadline(e.target.value)}
-                  placeholder="Ex: Acompanha batatas rústicas crocantes e refrigerante lata gelado..."
-                  className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 transition-colors"
+                  placeholder="Informações complementares (opcional)"
+                  className={inputCls}
                 />
               </div>
 
-              {/* Price Tags */}
-              <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={showPriceTag}
-                      onChange={(e) => setShowPriceTag(e.target.checked)}
-                      className="rounded bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-sky-600"
-                    />
-                    <span>Exibir Bloco de Preços</span>
-                  </label>
-
-                  {showPriceTag && (
-                    <span className="text-[11px] text-sky-600 dark:text-sky-400 font-semibold">
-                      Com destaque visual na TV
-                    </span>
-                  )}
-                </div>
+              <div className="rounded-2xl border border-border bg-card p-3.5 space-y-2.5">
+                <label className="flex items-center gap-2.5 text-xs font-bold text-foreground cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showPriceTag}
+                    onChange={(e) => setShowPriceTag(e.target.checked)}
+                    className="h-4 w-4 rounded border-border text-primary"
+                  />
+                  <span>Exibir Bloco de Preços</span>
+                </label>
 
                 {showPriceTag && (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                  <div className="grid grid-cols-1 gap-2.5 pt-1 sm:grid-cols-3">
                     <div>
-                      <label className="block text-[10px] text-slate-500 dark:text-slate-400 mb-1">Preço Normal (R$)</label>
+                      <label className="mb-1 block text-[11px] text-muted-foreground">
+                        Preço Anterior
+                      </label>
                       <input
                         type="text"
                         value={priceOriginal}
                         onChange={(e) => setPriceOriginal(e.target.value)}
-                        placeholder="Ex: R$ 49,90"
-                        className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs text-slate-500 dark:text-slate-300 line-through"
+                        placeholder="R$ 0,00"
+                        className={inputCls}
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[10px] text-emerald-600 dark:text-emerald-400 mb-1 font-bold">Preço Promocional (R$)</label>
+                      <label className="mb-1 block text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                        Preço Atual / Oferta
+                      </label>
                       <input
                         type="text"
                         value={pricePromo}
                         onChange={(e) => setPricePromo(e.target.value)}
-                        placeholder="Ex: R$ 36,90"
-                        className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white font-extrabold"
+                        placeholder="R$ 0,00"
+                        className={`${inputCls} font-extrabold`}
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[10px] text-amber-600 dark:text-amber-400 mb-1 font-medium">Selo de Desconto</label>
+                      <label className="mb-1 block text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                        Selo Extra
+                      </label>
                       <input
                         type="text"
                         value={discountBadge}
                         onChange={(e) => setDiscountBadge(e.target.value)}
-                        placeholder="Ex: 25% OFF"
-                        className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs text-amber-600 dark:text-amber-300 font-bold"
+                        placeholder="Ex: NOVO"
+                        className={`${inputCls} font-bold`}
                       />
                     </div>
                   </div>
@@ -705,65 +766,66 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
             </div>
 
             {/* 4. QR Code */}
-            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-                  <QrCode className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
-                  <span>04. QR Code Interativo</span>
+            <div className="rounded-3xl border border-border bg-muted/35 p-4 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-foreground">
+                  <QrCode className="h-3.5 w-3.5 text-primary shrink-0" />
+                  <span>04. QR Code na Tela</span>
                 </span>
 
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2 cursor-pointer">
+                <label className="flex items-center gap-2 text-xs font-bold text-foreground cursor-pointer shrink-0">
                   <input
                     type="checkbox"
                     checked={showQrCode}
                     onChange={(e) => setShowQrCode(e.target.checked)}
-                    className="rounded bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-sky-600"
+                    className="h-4 w-4 rounded border-border text-primary"
                   />
                   <span>Exibir na TV</span>
                 </label>
               </div>
 
               {showQrCode && (
-                <div className="space-y-3 pt-1 border-t border-slate-200 dark:border-slate-700/60">
-                  <div className="flex bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                <div className="space-y-3 border-t border-border/70 pt-3">
+                  <div className="grid grid-cols-2 gap-1 rounded-2xl border border-border bg-card p-1">
                     <button
                       type="button"
                       onClick={() => setQrCodeType('generated')}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      className={`rounded-xl py-2 text-xs font-bold transition cursor-pointer ${
                         qrCodeType === 'generated'
-                          ? 'bg-sky-600 text-white shadow-xs'
-                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                          ? 'bg-primary text-primary-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground'
                       }`}
                     >
-                      Gerar por Link / WhatsApp
+                      Gerar por Link
                     </button>
                     <button
                       type="button"
                       onClick={() => setQrCodeType('custom_upload')}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      className={`rounded-xl py-2 text-xs font-bold transition cursor-pointer ${
                         qrCodeType === 'custom_upload'
-                          ? 'bg-sky-600 text-white shadow-xs'
-                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                          ? 'bg-primary text-primary-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground'
                       }`}
                     >
-                      Subir Imagem de QR Real
+                      Subir Imagem
                     </button>
                   </div>
 
                   {qrCodeType === 'generated' ? (
                     <div>
-                      <label className="block text-[11px] text-slate-600 dark:text-slate-400 mb-1">Link de Destino</label>
+                      <label className="mb-1 block text-[11px] text-muted-foreground">
+                        Link de Destino (WhatsApp, Site, Cardápio, Instagram)
+                      </label>
                       <input
-                        type="text"
+                        type="url"
                         value={qrCodeUrl}
                         onChange={(e) => setQrCodeUrl(e.target.value)}
-                        placeholder="https://wa.me/5511999999999 ou https://seucardapio.com"
-                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 font-mono transition-colors"
+                        placeholder="https://wa.me/55..."
+                        className={`${inputCls} font-mono`}
                       />
                     </div>
                   ) : (
                     <div>
-                      <label className="block text-[11px] text-slate-600 dark:text-slate-400 mb-1">Arquivo PNG/JPG do QR</label>
                       <input
                         type="file"
                         ref={qrImageInputRef}
@@ -774,30 +836,36 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
                       <button
                         type="button"
                         onClick={() => qrImageInputRef.current?.click()}
-                        className="w-full py-2 px-3 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-200 transition-colors cursor-pointer"
+                        className="w-full rounded-2xl border border-border bg-card px-4 py-2.5 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer"
                       >
-                        {qrCodeCustomImage ? 'Substituir Imagem do QR Code' : 'Selecionar Arquivo de Imagem'}
+                        {qrCodeCustomImage
+                          ? 'Substituir Imagem do QR Code'
+                          : 'Selecionar Imagem PNG/JPG'}
                       </button>
                     </div>
                   )}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                     <div>
-                      <label className="block text-[11px] text-slate-600 dark:text-slate-400 mb-1">Chamada do QR</label>
+                      <label className="mb-1 block text-[11px] text-muted-foreground">
+                        Legenda abaixo do QR
+                      </label>
                       <input
                         type="text"
                         value={qrCodeLabel}
                         onChange={(e) => setQrCodeLabel(e.target.value)}
-                        placeholder="Ex: Peça pelo WhatsApp"
-                        className="w-full px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 transition-colors"
+                        placeholder="Ex: Aponte a câmera"
+                        className={inputCls}
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] text-slate-600 dark:text-slate-400 mb-1">Posição na Tela</label>
+                      <label className="mb-1 block text-[11px] text-muted-foreground">
+                        Posição na Tela
+                      </label>
                       <select
                         value={qrCodePosition}
                         onChange={(e) => setQrCodePosition(e.target.value as QrCodePosition)}
-                        className="w-full px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
+                        className={inputCls}
                       >
                         <option value="bottom-right">Canto Inferior Direito</option>
                         <option value="bottom-left">Canto Inferior Esquerdo</option>
@@ -810,65 +878,71 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
               )}
             </div>
 
-            {/* 5. Identidade da Marca & Duração */}
-            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-                  <Store className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
-                  <span>05. Marca da Empresa no Slide</span>
+            {/* 5. Identidade da Marca & Duração (Zero horizontal overflow on mobile) */}
+            <div className="rounded-3xl border border-border bg-muted/35 p-4 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-foreground">
+                  <Store className="h-3.5 w-3.5 text-primary shrink-0" />
+                  <span>05. Selo da Marca &amp; Tempo</span>
                 </span>
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2 cursor-pointer">
+                <label className="flex items-center gap-2 text-xs font-bold text-foreground cursor-pointer shrink-0">
                   <input
                     type="checkbox"
                     checked={showBrand}
                     onChange={(e) => setShowBrand(e.target.checked)}
-                    className="rounded bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-sky-600"
+                    className="h-4 w-4 rounded border-border text-primary"
                   />
-                  <span>Exibir Logo e Nome</span>
+                  <span>Exibir Marca</span>
                 </label>
               </div>
 
               {showBrand && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 border-t border-slate-200 dark:border-slate-700/60">
+                <div className="grid grid-cols-1 gap-2.5 border-t border-border/70 pt-3 sm:grid-cols-2">
                   <div>
-                    <label className="block text-[11px] text-slate-600 dark:text-slate-400 mb-1">Nome da Empresa</label>
+                    <label className="mb-1 block text-[11px] text-muted-foreground">
+                      Nome da Empresa
+                    </label>
                     <input
                       type="text"
                       value={brandName}
                       onChange={(e) => setBrandName(e.target.value)}
-                      placeholder="Ex: Minha Empresa"
-                      className="w-full px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 font-bold transition-colors"
+                      placeholder="Nome exibido no topo"
+                      className={`${inputCls} font-bold`}
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] text-slate-600 dark:text-slate-400 mb-1">Slogan ou Subtítulo</label>
+                    <label className="mb-1 block text-[11px] text-muted-foreground">
+                      Subtítulo / Slogan
+                    </label>
                     <input
                       type="text"
                       value={brandSlogan}
                       onChange={(e) => setBrandSlogan(e.target.value)}
-                      placeholder="Ex: Desde 2018 com o melhor sabor"
-                      className="w-full px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 transition-colors"
+                      placeholder="Opcional"
+                      className={inputCls}
                     />
                   </div>
                 </div>
               )}
 
-              {/* Tempo de Exibição */}
-              <div className="pt-2 border-t border-slate-200 dark:border-slate-700/60 flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
-                  <span>Tempo de Exibição na TV:</span>
-                </span>
-                <div className="flex items-center gap-1.5">
+              <div className="space-y-2 border-t border-border/70 pt-3">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-1.5 font-bold text-foreground">
+                    <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
+                    <span>Tempo de exibição na TV:</span>
+                  </span>
+                  <span className="font-mono font-bold text-primary">{durationSeconds}s</span>
+                </div>
+                <div className="grid grid-cols-5 gap-1.5">
                   {[8, 12, 15, 20, 30].map((sec) => (
                     <button
                       key={sec}
                       type="button"
                       onClick={() => setDurationSeconds(sec)}
-                      className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                      className={`rounded-xl py-2 text-xs font-bold transition cursor-pointer ${
                         durationSeconds === sec
-                          ? 'bg-sky-600 text-white shadow-xs'
-                          : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                          ? 'bg-primary text-primary-foreground shadow-xs'
+                          : 'border border-border bg-card text-muted-foreground hover:text-foreground'
                       }`}
                     >
                       {sec}s
@@ -880,66 +954,97 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
           </div>
 
           {/* TV Live Preview Column */}
-          <div className={`lg:col-span-5 space-y-4 ${mobileTab === 'edit' ? 'hidden lg:block' : 'block'}`}>
+          <div
+            className={`min-w-0 space-y-4 lg:col-span-5 ${
+              mobileTab === 'edit' ? 'hidden lg:block' : 'block'
+            }`}
+          >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-                <Eye className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
-                <span>Simulador da TV ao Vivo</span>
+              <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-foreground">
+                <Eye className="h-3.5 w-3.5 text-primary shrink-0" />
+                <span>Simulador da TV em Tempo Real</span>
               </span>
-              <span className="text-[10px] font-bold text-sky-700 dark:text-sky-400 bg-sky-100 dark:bg-sky-500/15 border border-sky-200 dark:border-sky-500/30 px-2 py-0.5 rounded-full">
-                16:9 FULL HD
+              <span className="font-mono text-[11px] font-semibold text-muted-foreground">
+                16:9 HD
               </span>
             </div>
 
-            {/* Realistic TV Bezel */}
-            <div className="keep-dark bg-slate-950 rounded-2xl p-3 border-2 border-slate-800 shadow-2xl flex flex-col">
-              <div className="keep-dark relative aspect-video bg-black rounded-lg overflow-hidden flex flex-col justify-between shadow-inner">
-                {imageUrl ? (
-                  <img src={imageUrl} alt="Preview" className="absolute inset-0 w-full h-full object-cover" />
+            <div className="flex flex-col rounded-3xl border border-border bg-zinc-950 p-2.5 sm:p-3 shadow-xl">
+              <div className="relative flex aspect-video flex-col justify-between overflow-hidden rounded-2xl bg-black">
+                {imageUrl && !previewImgError ? (
+                  <>
+                    {imageFit === 'contain' && (
+                      <img
+                        src={imageUrl}
+                        alt=""
+                        aria-hidden="true"
+                        className="absolute inset-0 h-full w-full scale-110 object-cover opacity-40 blur-xl"
+                      />
+                    )}
+                    <img
+                      src={imageUrl}
+                      alt="Preview do Slide"
+                      onError={() => setPreviewImgError(true)}
+                      className={`absolute inset-0 h-full w-full ${
+                        imageFit === 'contain' ? 'object-contain' : 'object-cover'
+                      }`}
+                    />
+                  </>
                 ) : (
-                  <div className="absolute inset-0 flex items-center justify-center bg-slate-950 text-slate-500 text-xs font-medium">
-                    Slide em Branco (Sem Foto)
+                  <div
+                    className="absolute inset-0 flex items-center justify-center px-4 text-center text-xs font-medium text-white/60"
+                    style={{
+                      background: `linear-gradient(135deg, ${accentColor}40 0%, #090d16 100%)`,
+                    }}
+                  >
+                    {!headline && !title ? 'Envie uma foto ou adicione um título' : null}
                   </div>
                 )}
 
-                {/* Darkness Overlay */}
-                <div
-                  className="absolute inset-0 pointer-events-none transition-opacity"
-                  style={{
-                    backgroundColor: `rgba(0, 0, 0, ${overlayDarkness / 100})`,
-                  }}
-                />
-
-                {/* 1. BRAND ON TV */}
-                {showBrand && (
+                {/* User-controlled dimming + smart text contrast only when text exists */}
+                {overlayDarkness > 0 && (
                   <div
-                    className={`relative z-10 p-2.5 flex items-center gap-2 ${
+                    className="pointer-events-none absolute inset-0 transition-opacity"
+                    style={{ backgroundColor: `rgba(0, 0, 0, ${overlayDarkness / 100})` }}
+                  />
+                )}
+                {hasBottomContent && overlayDarkness < 35 && (
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/75 via-black/30 to-transparent" />
+                )}
+
+                {showBrand && (brandName || companyProfile.name || brandLogo) && (
+                  <div
+                    className={`relative z-10 flex items-center gap-2 p-2.5 ${
                       brandPosition === 'top-right' ? 'justify-end' : 'justify-start'
                     }`}
                   >
                     <div
-                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl border shadow-lg backdrop-blur-md"
+                      className="flex items-center gap-2 rounded-xl border px-2.5 py-1.5 shadow-lg backdrop-blur-md"
                       style={{
-                        backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                        backgroundColor: 'rgba(9, 13, 22, 0.82)',
                         borderColor: `${accentColor}60`,
                       }}
                     >
                       {brandLogo ? (
-                        <img src={brandLogo} alt="Logo" className="w-5 h-5 object-contain rounded" />
+                        <img
+                          src={brandLogo}
+                          alt="Logo"
+                          className="h-5 w-5 rounded object-contain"
+                        />
                       ) : (
                         <div
-                          className="w-5 h-5 rounded-full flex items-center justify-center text-white"
+                          className="flex h-5 w-5 items-center justify-center rounded-md text-white"
                           style={{ backgroundColor: accentColor }}
                         >
-                          <Store className="w-3 h-3" />
+                          <Store className="h-3 w-3" />
                         </div>
                       )}
                       <div>
-                        <div className="font-extrabold text-[11px] text-white tracking-wide uppercase leading-tight">
-                          {brandName || companyProfile.name || 'Minha Empresa'}
+                        <div className="text-[10px] font-extrabold uppercase leading-tight tracking-wide text-white">
+                          {brandName || companyProfile.name}
                         </div>
                         {(brandSlogan || companyProfile.slogan) && (
-                          <div className="text-[8px] text-slate-300 font-medium tracking-tight">
+                          <div className="text-[8px] font-medium tracking-tight text-white/75">
                             {brandSlogan || companyProfile.slogan}
                           </div>
                         )}
@@ -948,29 +1053,36 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
                   </div>
                 )}
 
-                {/* 2. QR CODE ON TV */}
                 {showQrCode && resolvedQrImage && (
                   <div
                     className={`absolute z-20 p-2.5 ${
                       qrCodePosition === 'bottom-right'
                         ? 'bottom-2 right-2'
                         : qrCodePosition === 'bottom-left'
-                        ? 'bottom-2 left-2'
-                        : qrCodePosition === 'top-right'
-                        ? 'top-2 right-2'
-                        : 'top-2 left-2'
+                          ? 'bottom-2 left-2'
+                          : qrCodePosition === 'top-right'
+                            ? 'top-2 right-2'
+                            : 'top-2 left-2'
                     }`}
                   >
-                    <div className="bg-white p-1.5 rounded-xl shadow-2xl flex flex-col items-center max-w-[110px] border border-white">
+                    <div className="flex max-w-[110px] flex-col items-center rounded-xl border border-white bg-white p-1.5 shadow-2xl">
                       <div
-                        className={`${
-                          qrCodeSize === 'small' ? 'w-12 h-12' : qrCodeSize === 'medium' ? 'w-16 h-16' : 'w-20 h-20'
-                        }`}
+                        className={
+                          qrCodeSize === 'small'
+                            ? 'h-12 w-12'
+                            : qrCodeSize === 'medium'
+                              ? 'h-16 w-16'
+                              : 'h-20 w-20'
+                        }
                       >
-                        <img src={resolvedQrImage} alt="QR Code" className="w-full h-full object-contain" />
+                        <img
+                          src={resolvedQrImage}
+                          alt="QR Code"
+                          className="h-full w-full object-contain"
+                        />
                       </div>
                       {qrCodeLabel && (
-                        <span className="text-[7.5px] font-extrabold text-slate-900 text-center leading-tight mt-1">
+                        <span className="mt-1 text-center text-[7.5px] font-extrabold leading-tight text-slate-900">
                           {qrCodeLabel}
                         </span>
                       )}
@@ -978,80 +1090,79 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
                   </div>
                 )}
 
-                {/* 3. HEADLINE, BADGE & PRICE */}
-                <div className="relative z-10 p-3 mt-auto">
-                  <div className="max-w-[70%] space-y-1">
-                    {showOverlayBadge && badgeText && (
-                      <span
-                        className="inline-block px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase text-white shadow-md tracking-wider"
-                        style={{ backgroundColor: accentColor }}
-                      >
-                        {badgeText}
-                      </span>
-                    )}
+                {hasBottomContent && (
+                  <div className="relative z-10 mt-auto p-3">
+                    <div className="max-w-[72%] space-y-1">
+                      {badgeText.trim() && (
+                        <span
+                          className="inline-block rounded-md px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-white shadow-md"
+                          style={{ backgroundColor: accentColor }}
+                        >
+                          {badgeText}
+                        </span>
+                      )}
 
-                    {headline && (
-                      <h4 className="text-white font-black text-sm sm:text-base leading-tight drop-shadow-md">
-                        {headline}
-                      </h4>
-                    )}
+                      {headline && (
+                        <h4 className="text-sm sm:text-base font-black leading-tight text-white drop-shadow-md">
+                          {headline}
+                        </h4>
+                      )}
 
-                    {subheadline && (
-                      <p className="text-slate-200 text-[9px] line-clamp-2 drop-shadow leading-snug">
-                        {subheadline}
-                      </p>
-                    )}
+                      {subheadline && (
+                        <p className="line-clamp-2 text-[9px] leading-snug text-white/90 drop-shadow">
+                          {subheadline}
+                        </p>
+                      )}
 
-                    {showPriceTag && (priceOriginal || pricePromo) && (
-                      <div className="flex items-center gap-2 pt-1">
-                        {priceOriginal && (
-                          <span className="text-slate-300 text-[10px] line-through font-semibold drop-shadow">
-                            {priceOriginal}
-                          </span>
-                        )}
-                        {pricePromo && (
-                          <span
-                            className="text-xs sm:text-sm font-black text-white px-2 py-0.5 rounded-lg shadow-lg"
-                            style={{ backgroundColor: accentColor }}
-                          >
-                            {pricePromo}
-                          </span>
-                        )}
-                        {discountBadge && (
-                          <span className="text-[9px] font-extrabold bg-amber-400 text-slate-950 px-1.5 py-0.5 rounded shadow">
-                            {discountBadge}
-                          </span>
-                        )}
-                      </div>
-                    )}
+                      {showPriceTag && (priceOriginal || pricePromo) && (
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
+                          {priceOriginal && (
+                            <span className="text-[10px] font-semibold text-white/75 line-through drop-shadow">
+                              {priceOriginal}
+                            </span>
+                          )}
+                          {pricePromo && (
+                            <span
+                              className="rounded-lg px-2 py-0.5 text-xs sm:text-sm font-black text-white shadow-lg"
+                              style={{ backgroundColor: accentColor }}
+                            >
+                              {pricePromo}
+                            </span>
+                          )}
+                          {discountBadge && (
+                            <span className="rounded-md bg-amber-400 px-1.5 py-0.5 text-[9px] font-extrabold text-slate-950 shadow">
+                              {discountBadge}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
 
-            <div className="p-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl flex items-center justify-between">
-              <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 cursor-pointer">
+            <div className="flex items-center justify-between gap-3 rounded-3xl border border-border bg-muted/40 p-3.5">
+              <label className="flex items-center gap-2.5 text-xs font-bold text-foreground cursor-pointer">
                 <input
                   type="checkbox"
                   checked={addToActivePlaylist}
                   onChange={(e) => setAddToActivePlaylist(e.target.checked)}
-                  className="rounded bg-slate-100 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-sky-600"
+                  className="h-4 w-4 rounded border-border text-primary"
                 />
-                <span>Transmitir na TV imediatamente</span>
+                <span>Adicionar automaticamente na TV ativa</span>
               </label>
-              <span className="text-[10px] font-extrabold text-sky-700 dark:text-sky-400 bg-sky-100 dark:bg-sky-500/15 px-2 py-0.5 rounded-full">
-                AO VIVO
-              </span>
+              <span className="text-[11px] font-bold text-primary shrink-0">Imediato</span>
             </div>
           </div>
         </div>
 
         {/* Modal Footer */}
-        <div className="px-5 py-3.5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/90 flex items-center justify-between gap-3">
+        <div className="shrink-0 flex items-center justify-between gap-3 border-t border-border bg-muted/30 px-4 py-3.5 sm:px-6 sm:py-4">
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 rounded-full text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors cursor-pointer"
+            className="rounded-2xl border border-border bg-card px-4 py-2.5 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground transition cursor-pointer"
           >
             Cancelar
           </button>
@@ -1059,9 +1170,9 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
           <button
             type="button"
             onClick={handleSave}
-            className="flex items-center gap-2 px-6 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-full transition-all cursor-pointer shadow-sm active:scale-95"
+            className="inline-flex flex-1 sm:flex-initial items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-2.5 text-xs font-bold text-primary-foreground shadow-xs hover:opacity-95 active:scale-[0.98] transition cursor-pointer"
           >
-            <Check className="w-4 h-4" />
+            <Check className="h-4 w-4 shrink-0" />
             <span>{initialItem ? 'Salvar Alterações' : 'Publicar Slide na TV'}</span>
           </button>
         </div>

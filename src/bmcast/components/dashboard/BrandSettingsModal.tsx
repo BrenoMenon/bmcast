@@ -10,10 +10,10 @@ import {
 } from 'lucide-react';
 import { CompanyBrandProfile } from '../../types/signage';
 import { qrService } from '../../services/qrService';
+import { supabaseService } from '../../services/supabaseClient';
 import { AccountSecurityPanel } from './AccountSecurityPanel';
 import { WhatsAppIcon } from '../common/WhatsAppIcon';
 import { editableCompanyName, formatWhatsApp, normalizeInstagram } from '../../services/contactFormatting';
-import { Button } from '@/components/ui/button';
 
 interface BrandSettingsModalProps {
   isOpen: boolean;
@@ -36,6 +36,9 @@ const PRESET_COLORS = [
   { name: 'Rosa Pink', hex: '#EC4899' },
   { name: 'Dourado', hex: '#EAB308' },
 ];
+
+const inputCls =
+  'w-full rounded-2xl border border-border bg-muted/40 px-3.5 py-2.5 text-base sm:text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:bg-card focus:outline-none transition';
 
 export const BrandSettingsModal: React.FC<BrandSettingsModalProps> = ({
   isOpen,
@@ -74,8 +77,9 @@ export const BrandSettingsModal: React.FC<BrandSettingsModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const dataUrl = await qrService.fileToDataUrl(file);
-      setLogoUrl(dataUrl);
+      const cloudUrl = await supabaseService.uploadAsset(file, 'logos');
+      const finalUrl = cloudUrl || (await qrService.fileToDataUrl(file));
+      setLogoUrl(finalUrl);
     } catch (err) {
       console.error('Erro upload logo:', err);
     }
@@ -87,7 +91,7 @@ export const BrandSettingsModal: React.FC<BrandSettingsModalProps> = ({
       name: name.trim(),
       slogan: slogan.trim(),
       logoUrl: logoUrl.trim(),
-      accentColor: accentColor,
+      accentColor,
       primaryColor: accentColor,
       phoneWhatsApp: phoneWhatsApp.trim(),
       instagramHandle: instagramHandle ? `@${normalizeInstagram(instagramHandle)}` : '',
@@ -95,47 +99,48 @@ export const BrandSettingsModal: React.FC<BrandSettingsModalProps> = ({
       defaultQrCodeImage: defaultQrCodeImage.trim(),
     };
     (onSave || onSaveProfile)?.(profile);
-    onClose();
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-3xl p-6 overflow-hidden max-h-[92vh] flex flex-col shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 p-0 sm:p-4 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="relative flex max-h-[94dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl sm:rounded-[2rem] border border-border bg-card p-5 sm:p-6 text-card-foreground shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between pb-3.5 border-b border-slate-200 dark:border-slate-800">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-sky-50 dark:bg-sky-500/20 text-sky-600 dark:text-sky-400 flex items-center justify-center">
-              <Store className="w-4 h-4" />
+        <div className="flex items-center justify-between border-b border-border pb-3.5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-primary/15 text-primary ring-1 ring-primary/25">
+              <Store className="h-4 w-4" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
+              <h2 className="text-base font-extrabold tracking-tight text-foreground">
                 Marca &amp; Identidade Visual
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Padrões aplicados nos seus novos slides e telas
+              <p className="text-xs text-muted-foreground">
+                Padrões aplicados nos seus slides e telas
               </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            aria-label="Fechar"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Form Body */}
         <div className="flex-1 overflow-y-auto py-4 space-y-4">
           {setupHint && (
-            <p className="px-3.5 py-2.5 rounded-2xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 text-[11px] font-semibold text-sky-700 dark:text-sky-300">
+            <p className="rounded-2xl border border-primary/25 bg-primary/10 px-4 py-2.5 text-[11px] font-semibold text-foreground">
               {setupHint}
             </p>
           )}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label htmlFor="company-name" className="block text-[11px] text-slate-700 dark:text-slate-300 font-semibold mb-1">
+              <label htmlFor="company-name" className="mb-1 block text-[11px] font-semibold text-foreground">
                 Nome da Empresa
               </label>
               <input
@@ -146,11 +151,11 @@ export const BrandSettingsModal: React.FC<BrandSettingsModalProps> = ({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Ex: Minha Empresa"
-                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 font-semibold transition-colors"
+                className={`${inputCls} font-semibold`}
               />
             </div>
             <div>
-              <label className="block text-[11px] text-slate-700 dark:text-slate-300 font-semibold mb-1">
+              <label className="mb-1 block text-[11px] font-semibold text-foreground">
                 Slogan Oficial
               </label>
               <input
@@ -158,13 +163,13 @@ export const BrandSettingsModal: React.FC<BrandSettingsModalProps> = ({
                 value={slogan}
                 onChange={(e) => setSlogan(e.target.value)}
                 placeholder="Ex: O Melhor da Região"
-                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 transition-colors"
+                className={inputCls}
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-[11px] text-slate-700 dark:text-slate-300 font-semibold mb-1">
+            <label className="mb-1 block text-[11px] font-semibold text-foreground">
               Logotipo da Empresa
             </label>
             <div className="flex items-center gap-2.5">
@@ -178,52 +183,52 @@ export const BrandSettingsModal: React.FC<BrandSettingsModalProps> = ({
               <button
                 type="button"
                 onClick={() => logoFileRef.current?.click()}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-full text-xs font-semibold text-slate-800 dark:text-white transition-colors cursor-pointer shadow-xs"
+                className="flex flex-1 items-center justify-center gap-2 rounded-full border border-border bg-muted/60 px-4 py-2.5 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer"
               >
-                <Upload className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                <Upload className="h-4 w-4 text-primary" />
                 <span>{logoUrl ? 'Substituir Imagem do Logo' : 'Fazer Upload do Logo'}</span>
               </button>
               {logoUrl && (
-                <div className="w-10 h-10 bg-slate-100 dark:bg-black rounded-xl p-1 border border-slate-200 dark:border-slate-700 shrink-0 flex items-center justify-center">
-                  <img src={logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border bg-muted p-1">
+                  <img src={logoUrl} alt="Logo" className="max-h-full max-w-full object-contain" />
                 </div>
               )}
             </div>
           </div>
 
           <div>
-            <label className="block text-[11px] text-slate-700 dark:text-slate-300 font-semibold mb-1.5 flex items-center gap-1.5">
-              <Palette className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
-              <span>Cor Padrão da Marca:</span>
+            <label className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-foreground">
+              <Palette className="h-3.5 w-3.5 text-primary" />
+              <span>Cor Padrão da Marca</span>
             </label>
             <div className="grid grid-cols-5 sm:flex sm:flex-wrap items-center gap-2.5 justify-items-center">
               {PRESET_COLORS.map((c) => (
-                <Button
+                <button
                   key={c.hex}
                   type="button"
                   onClick={() => setAccentColor(c.hex)}
                   aria-label={c.name}
                   aria-pressed={accentColor.toUpperCase() === c.hex.toUpperCase()}
-                  className={`!w-9 !h-9 !min-h-0 !min-w-0 aspect-square shrink-0 p-0 rounded-full flex items-center justify-center cursor-pointer transition-all ${
+                  className={`flex h-9 w-9 aspect-square shrink-0 items-center justify-center rounded-full p-0 transition cursor-pointer ${
                     accentColor.toUpperCase() === c.hex.toUpperCase()
-                      ? 'ring-2 ring-sky-500 scale-110 shadow'
-                      : 'opacity-85 hover:opacity-100 hover:scale-105'
+                      ? 'scale-110 ring-2 ring-primary shadow'
+                      : 'opacity-85 hover:scale-105 hover:opacity-100'
                   }`}
                   style={{ backgroundColor: c.hex }}
                   title={c.name}
                 >
                   {accentColor.toUpperCase() === c.hex.toUpperCase() && (
-                    <Check className="w-3.5 h-3.5 text-white drop-shadow" />
+                    <Check className="h-3.5 w-3.5 text-white drop-shadow" />
                   )}
-                </Button>
+                </button>
               ))}
 
-              <div className="flex items-center justify-center sm:pl-2 sm:border-l border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-center sm:border-l sm:border-border sm:pl-2">
                 <input
                   type="color"
                   value={accentColor}
                   onChange={(e) => setAccentColor(e.target.value)}
-                  className="brand-color-input !w-9 !h-9 !min-h-0 aspect-square shrink-0 rounded-full border border-input bg-transparent cursor-pointer"
+                  className="brand-color-input !h-9 !w-9 aspect-square shrink-0 rounded-full border border-border bg-transparent cursor-pointer"
                   aria-label="Cor personalizada"
                   title="Cor livre"
                 />
@@ -231,10 +236,10 @@ export const BrandSettingsModal: React.FC<BrandSettingsModalProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2.5 border-t border-slate-200 dark:border-slate-800">
+          <div className="grid grid-cols-1 gap-3 border-t border-border pt-3 sm:grid-cols-2">
             <div>
-              <label htmlFor="company-whatsapp" className="block text-[11px] text-slate-700 dark:text-slate-300 font-semibold mb-1 flex items-center gap-1.5">
-                <WhatsAppIcon className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+              <label htmlFor="company-whatsapp" className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold text-foreground">
+                <WhatsAppIcon className="h-3.5 w-3.5 text-primary" />
                 <span>WhatsApp</span>
               </label>
               <input
@@ -246,35 +251,37 @@ export const BrandSettingsModal: React.FC<BrandSettingsModalProps> = ({
                 value={phoneWhatsApp}
                 onChange={(e) => setPhoneWhatsApp(formatWhatsApp(e.target.value))}
                 placeholder="(xx) xxxxx-xxxx"
-                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 transition-colors"
+                className={inputCls}
               />
             </div>
             <div>
-              <label htmlFor="company-instagram" className="block text-[11px] text-slate-700 dark:text-slate-300 font-semibold mb-1 flex items-center gap-1.5">
-                <Instagram className="w-3.5 h-3.5 text-pink-500 dark:text-pink-400" />
+              <label htmlFor="company-instagram" className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold text-foreground">
+                <Instagram className="h-3.5 w-3.5 text-pink-500" />
                 <span>Instagram</span>
               </label>
               <div className="relative">
-              <span aria-hidden="true" className="pointer-events-none absolute left-3.5 inset-y-0 flex items-center text-muted-foreground">@</span>
-              <input
-                id="company-instagram"
-                type="text"
-                autoComplete="off"
-                autoCapitalize="none"
-                spellCheck={false}
-                maxLength={31}
-                value={instagramHandle}
-                onChange={(e) => setInstagramHandle(normalizeInstagram(e.target.value))}
-                placeholder="sualoja"
-                className="w-full pl-8 pr-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 transition-colors"
-              />
+                <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-muted-foreground">
+                  @
+                </span>
+                <input
+                  id="company-instagram"
+                  type="text"
+                  autoComplete="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  maxLength={31}
+                  value={instagramHandle}
+                  onChange={(e) => setInstagramHandle(normalizeInstagram(e.target.value))}
+                  placeholder="sualoja"
+                  className={`${inputCls} pl-8`}
+                />
               </div>
             </div>
           </div>
 
-          <div className="pt-2.5 border-t border-slate-200 dark:border-slate-800">
-            <label className="block text-[11px] text-slate-700 dark:text-slate-300 font-semibold mb-1 flex items-center gap-1.5">
-              <QrCode className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+          <div className="border-t border-border pt-3">
+            <label className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold text-foreground">
+              <QrCode className="h-3.5 w-3.5 text-primary" />
               <span>Link Padrão para QR Code</span>
             </label>
             <input
@@ -282,7 +289,7 @@ export const BrandSettingsModal: React.FC<BrandSettingsModalProps> = ({
               value={defaultQrCodeUrl}
               onChange={(e) => setDefaultQrCodeUrl(e.target.value)}
               placeholder="https://wa.me/5511... ou https://meucardapio.com"
-              className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 font-mono transition-colors"
+              className={`${inputCls} font-mono`}
             />
           </div>
 
@@ -290,18 +297,20 @@ export const BrandSettingsModal: React.FC<BrandSettingsModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="pt-3.5 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2.5">
+        <div className="flex items-center justify-end gap-2.5 border-t border-border pt-3.5">
           <button
+            type="button"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-full transition-colors cursor-pointer"
+            className="rounded-full px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground transition cursor-pointer"
           >
             Cancelar
           </button>
           <button
+            type="button"
             onClick={handleSave}
-            className="flex items-center gap-1.5 px-5 py-2 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white text-xs font-bold rounded-full transition-all cursor-pointer shadow-sm"
+            className="inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2 text-xs font-bold text-primary-foreground shadow-xs hover:opacity-95 active:scale-95 transition cursor-pointer"
           >
-            <Check className="w-3.5 h-3.5" />
+            <Check className="h-3.5 w-3.5" />
             <span>{setupHint ? 'Salvar e Continuar' : 'Salvar Marca'}</span>
           </button>
         </div>

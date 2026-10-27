@@ -1,0 +1,6 @@
+{
+  "name": "BM CAST - Sistema Profissional de TV e Mídia Indoor",
+  "description": "Plataforma completa de Digital Signage para TV corporativa, cardápio digital, murais informativos e letreiros otimizada para TVs e totens.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

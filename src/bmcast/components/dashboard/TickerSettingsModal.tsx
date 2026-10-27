@@ -12,13 +12,8 @@ interface TickerSettingsModalProps {
   ticker: TickerConfig;
   onSave?: ((updated: TickerConfig) => void) | undefined;
   onSaveTicker?: ((updated: TickerConfig) => void) | undefined;
+  setupHint?: string | undefined;
 }
-
-const PRESET_MESSAGES = [
-  'Peça pelo nosso WhatsApp ou retire no balcão com agilidade! Consulte nossas promoções.',
-  'Conecte-se ao nosso Wi-Fi gratuito escaneando o QR Code na tela. Seja bem-vindo!',
-  'Horário de funcionamento: Seg a Sex das 09h às 22h | Sáb e Dom das 11h às 23h.',
-];
 
 export const TickerSettingsModal: React.FC<TickerSettingsModalProps> = ({
   isOpen,
@@ -26,6 +21,7 @@ export const TickerSettingsModal: React.FC<TickerSettingsModalProps> = ({
   ticker,
   onSave,
   onSaveTicker,
+  setupHint,
 }) => {
   const [enabled, setEnabled] = useState(ticker.enabled);
   const [text, setText] = useState(ticker.text);
@@ -50,102 +46,93 @@ export const TickerSettingsModal: React.FC<TickerSettingsModalProps> = ({
       accentTitle: accentTitle.trim(),
     };
     (onSave || onSaveTicker)?.(updated);
-    onClose();
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="relative w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-3xl p-6 overflow-hidden max-h-[92vh] flex flex-col shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 p-0 sm:p-4 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="relative flex max-h-[92dvh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl sm:rounded-[2rem] border border-border bg-card p-5 sm:p-6 text-card-foreground shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between pb-3.5 border-b border-slate-200 dark:border-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-sky-50 dark:bg-sky-500/20 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-500/40 flex items-center justify-center shrink-0">
-              <Radio className="w-5 h-5" />
+        <div className="flex items-start justify-between gap-3 pb-3.5 border-b border-border">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary ring-1 ring-primary/25">
+              <Radio className="h-5 w-5" />
             </div>
-            <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
+            <div className="min-w-0">
+              <h2 className="text-base font-extrabold tracking-tight text-foreground truncate">
                 Letreiro Rolante da TV
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Faixa de comunicados em tempo real no rodapé da TV
+              <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                Faixa de comunicados no rodapé da tela
               </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            aria-label="Fechar"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-muted/50 text-muted-foreground hover:text-foreground transition cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto py-4 space-y-4">
-          <div className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700">
+          {setupHint && (
+            <p className="rounded-2xl border border-primary/25 bg-primary/10 px-3.5 py-2.5 text-xs font-semibold text-primary">
+              {setupHint}
+            </p>
+          )}
+
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-muted/40 p-3.5">
             <div>
-              <div className="text-xs font-semibold text-slate-900 dark:text-white">Exibir Letreiro na TV</div>
-              <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Ativa a faixa rolante inferior da TV</div>
+              <div className="text-xs font-bold text-foreground">Exibir Letreiro na TV</div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">
+                Ativa a faixa de texto contínua no rodapé
+              </div>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
+            <label className="relative inline-flex items-center cursor-pointer shrink-0">
               <input
                 type="checkbox"
                 checked={enabled}
                 onChange={(e) => setEnabled(e.target.checked)}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-slate-300 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-600"></div>
+              <div className="h-6 w-11 rounded-full bg-muted peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:after:translate-x-full" />
             </label>
           </div>
 
           <div>
-            <label className="block text-[11px] text-slate-700 dark:text-slate-300 font-semibold mb-1">
+            <label className="mb-1 block text-xs font-semibold text-foreground">
               Etiqueta de Destaque
             </label>
             <input
               type="text"
               value={accentTitle}
               onChange={(e) => setAccentTitle(e.target.value)}
-              placeholder="Ex: AVISO AO VIVO"
-              className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white uppercase focus:outline-none focus:border-sky-500 font-semibold transition-colors"
+              placeholder="Ex: AVISO"
+              className="w-full rounded-2xl border border-border bg-muted/40 px-3.5 py-2.5 text-base sm:text-xs font-bold uppercase text-foreground placeholder:text-muted-foreground focus:border-primary focus:bg-card focus:outline-none transition"
             />
           </div>
 
           <div>
-            <label className="block text-[11px] text-slate-700 dark:text-slate-300 font-semibold mb-1">
-              Texto do Letreiro
+            <label className="mb-1 block text-xs font-semibold text-foreground">
+              Seu Texto Personalizado
             </label>
             <textarea
               rows={3}
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="Digite o texto que irá rodar na TV..."
-              className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 transition-colors"
+              placeholder="Escreva a mensagem que deseja exibir no rodapé da sua TV..."
+              className="w-full rounded-2xl border border-border bg-muted/40 px-3.5 py-2.5 text-base sm:text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:bg-card focus:outline-none transition"
             />
           </div>
 
           <div>
-            <label className="block text-[11px] text-slate-500 dark:text-slate-400 mb-1.5 font-medium">
-              Sugestões Rápidas:
-            </label>
-            <div className="space-y-1.5">
-              {PRESET_MESSAGES.map((msg, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => setText(msg)}
-                  className="w-full text-left p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer truncate"
-                >
-                  "{msg}"
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-[11px] text-slate-700 dark:text-slate-300 font-semibold mb-1.5">
-              Velocidade do Texto
+            <label className="mb-1.5 block text-xs font-semibold text-foreground">
+              Velocidade de Leitura
             </label>
             <div className="grid grid-cols-3 gap-2">
               {(['slow', 'normal', 'fast'] as const).map((spd) => (
@@ -153,10 +140,10 @@ export const TickerSettingsModal: React.FC<TickerSettingsModalProps> = ({
                   key={spd}
                   type="button"
                   onClick={() => setSpeed(spd)}
-                  className={`py-2 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                  className={`rounded-2xl border py-2.5 text-xs font-bold transition cursor-pointer ${
                     speed === spd
-                      ? 'bg-sky-600 text-white border-sky-500 shadow-sm'
-                      : 'bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:text-slate-900 dark:hover:text-white'
+                      ? 'border-primary bg-primary text-primary-foreground shadow-xs'
+                      : 'border-border bg-muted/40 text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   {spd === 'slow' ? 'Suave' : spd === 'normal' ? 'Normal' : 'Rápido'}
@@ -167,18 +154,20 @@ export const TickerSettingsModal: React.FC<TickerSettingsModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="pt-3.5 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2.5">
+        <div className="flex items-center justify-end gap-2.5 border-t border-border pt-3.5">
           <button
+            type="button"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-full transition-colors cursor-pointer"
+            className="rounded-2xl border border-border px-4 py-2.5 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground transition cursor-pointer"
           >
             Cancelar
           </button>
           <button
+            type="button"
             onClick={handleSave}
-            className="flex items-center gap-1.5 px-5 py-2 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white text-xs font-bold rounded-full transition-all cursor-pointer shadow-sm"
+            className="inline-flex flex-1 sm:flex-initial items-center justify-center gap-1.5 rounded-2xl bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground shadow-xs hover:opacity-95 active:scale-[0.98] transition cursor-pointer"
           >
-            <Check className="w-3.5 h-3.5" />
+            <Check className="h-4 w-4 shrink-0" />
             <span>Salvar Letreiro</span>
           </button>
         </div>

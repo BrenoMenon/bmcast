@@ -1,11 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
-  Clock,
   Sun,
   CloudSun,
   CloudRain,
-  Wind,
-  Droplets,
   Maximize2,
   Minimize2,
   ArrowLeft,
@@ -13,13 +10,8 @@ import {
   Pause,
   SkipForward,
   SkipBack,
-  Volume2,
-  VolumeX,
   Store,
-  QrCode,
   Radio,
-  Sparkles,
-  Info,
 } from 'lucide-react';
 import {
   Screen,
@@ -27,7 +19,6 @@ import {
   MediaItem,
   TickerConfig,
   WeatherConfig,
-  PlaylistItem,
 } from '../../types/signage';
 import { storageService, DB_UPDATED_EVENT } from '../../services/storageService';
 import { qrService } from '../../services/qrService';
@@ -41,8 +32,9 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
   const [screen, setScreen] = useState<Screen | null>(null);
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
   const [mediaList, setMediaList] = useState<MediaItem[]>([]);
+  const [companyNameFallback, setCompanyNameFallback] = useState<string>('');
   const [ticker, setTicker] = useState<TickerConfig>({
-    enabled: true,
+    enabled: false,
     text: '',
     speed: 'normal',
     accentTitle: 'COMUNICADO',
@@ -69,41 +61,27 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
   const [progressPercent, setProgressPercent] = useState<number>(0);
+  const [mediaLoadError, setMediaLoadError] = useState<boolean>(false);
 
-  // Auto-hide controls
   const [showControls, setShowControls] = useState<boolean>(false);
-  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // QR Code cache for current slide
   const [generatedQrMap, setGeneratedQrMap] = useState<Record<string, string>>({});
 
-  const slideTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const progressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const slideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
-  // Load all data
+  // Load screen bundle by short slug (/tv1, /loja) or 4-digit numeric code (/4821)
   const loadData = useCallback(async () => {
     try {
-      const screens = await storageService.getScreens();
-      const allMedia = await storageService.getMedia();
-      const allPlaylists = await storageService.getPlaylists();
-      const t = await storageService.getTicker();
-      const w = await storageService.getWeather();
-
-      const cleanSlug = slug.toLowerCase().trim();
-      const foundScreen = screens.find((s) => s.slug.toLowerCase().trim() === cleanSlug) || screens[0];
-
-      setScreen(foundScreen || null);
-      setMediaList(allMedia);
-      setTicker(t);
-      setWeather(w);
-
-      if (foundScreen && foundScreen.activePlaylistId) {
-        const active = allPlaylists.find((p) => p.id === foundScreen.activePlaylistId);
-        setPlaylist(active || allPlaylists[0] || null);
-      } else {
-        setPlaylist(allPlaylists[0] || null);
-      }
+      const bundle = await storageService.getPublicPlayerBundle(slug);
+      setScreen(bundle.screen);
+      setPlaylist(bundle.playlist);
+      setMediaList(bundle.mediaList);
+      setTicker(bundle.ticker);
+      setWeather(bundle.weather);
+      setCompanyNameFallback(bundle.config?.brandProfile?.name || '');
     } catch (e) {
       console.error('Falha ao carregar dados do player:', e);
     }
@@ -111,11 +89,17 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
 
   useEffect(() => {
     loadData();
+
+    const syncInterval = setInterval(() => {
+      loadData();
+    }, 15000);
+
     const handleDBChange = () => {
       loadData();
     };
     window.addEventListener(DB_UPDATED_EVENT, handleDBChange);
     return () => {
+      clearInterval(syncInterval);
       window.removeEventListener(DB_UPDATED_EVENT, handleDBChange);
     };
   }, [loadData]);
@@ -128,14 +112,13 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
     return () => clearInterval(clockInterval);
   }, []);
 
-  // Resolved list of active items to play
   const activeItems = useMemo(() => {
     if (playlist && playlist.items && playlist.items.length > 0) {
       return playlist.items.map((item) => {
         const media = mediaList.find((m) => m.id === item.mediaId);
         return {
           id: item.id,
-          title: item.customTitle || media?.title || 'Slide BM CAST',
+          title: item.customTitle || media?.title || 'Slide',
           url: media?.url || '',
           type: media?.type || 'image',
           durationSeconds: item.durationSeconds || media?.durationDefault || 12,
@@ -146,7 +129,6 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
       });
     }
 
-    // Fallback: If playlist empty but media exists, play media directly!
     return mediaList.map((m) => ({
       id: m.id,
       title: m.title,
@@ -159,10 +141,30 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
     }));
   }, [playlist, mediaList]);
 
-  // Safe current item
+  // Keep currentIndex valid if playlist shrinks
+  useEffect(() => {
+    if (activeItems.length > 0 && currentIndex >= activeItems.length) {
+      setCurrentIndex(0);
+    }
+  }, [activeItems.length, currentIndex]);
+
   const currentItem = activeItems[currentIndex] || activeItems[0];
 
-  // Pre-generate QR Code for current item if dynamic
+  useEffect(() => {
+    setMediaLoadError(false);
+  }, [currentItem?.url, currentIndex]);
+
+  // Preload next slide image for seamless zero-flicker transitions
+  useEffect(() => {
+    if (activeItems.length <= 1) return;
+    const nextItem = activeItems[(currentIndex + 1) % activeItems.length];
+    if (nextItem?.url && nextItem.type !== 'video') {
+      const preload = new Image();
+      preload.src = nextItem.url;
+    }
+  }, [activeItems, currentIndex]);
+
+  // Generate high-res QR Code (800px) for current slide
   useEffect(() => {
     if (!currentItem?.qrConfig?.showQrCode) return;
     const { qrCodeType, qrCodeUrl } = currentItem.qrConfig;
@@ -175,7 +177,6 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
     }
   }, [currentItem, generatedQrMap]);
 
-  // Slide Rotation Logic
   const handleNextSlide = useCallback(() => {
     if (activeItems.length <= 1) return;
     setCurrentIndex((prev) => (prev + 1) % activeItems.length);
@@ -199,12 +200,7 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
 
     if (progressTimerRef.current) clearInterval(progressTimerRef.current);
     progressTimerRef.current = setInterval(() => {
-      setProgressPercent((prev) => {
-        if (prev >= 100) {
-          return 100;
-        }
-        return prev + step;
-      });
+      setProgressPercent((prev) => (prev >= 100 ? 100 : prev + step));
     }, intervalTime);
 
     if (slideTimerRef.current) clearTimeout(slideTimerRef.current);
@@ -218,8 +214,7 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
     };
   }, [currentIndex, isPlaying, activeItems.length, currentItem?.durationSeconds, handleNextSlide]);
 
-  // Auto-hide controls after inactivity
-  const handleMouseMove = () => {
+  const handleRevealControls = () => {
     setShowControls(true);
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     controlsTimeoutRef.current = setTimeout(() => {
@@ -227,7 +222,6 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
     }, 3500);
   };
 
-  // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === ' ' || e.code === 'Space') {
@@ -249,9 +243,7 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
-      containerRef.current?.requestFullscreen?.().catch((err) => {
-        console.warn('Erro ao entrar em fullscreen:', err);
-      });
+      containerRef.current?.requestFullscreen?.().catch(() => {});
       setIsFullscreen(true);
     } else {
       document.exitFullscreen?.().catch(() => {});
@@ -259,118 +251,136 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
     }
   };
 
-  // Date formatting in Portuguese
   const formattedTime = currentTime.toLocaleTimeString('pt-BR', {
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit',
   });
 
   const formattedDate = currentTime.toLocaleDateString('pt-BR', {
-    weekday: 'long',
+    weekday: 'short',
     day: 'numeric',
-    month: 'long',
+    month: 'short',
   });
 
-  // Weather Icon
   const renderWeatherIcon = () => {
-    if (weather.condition === 'sunny') return <Sun className="w-6 h-6 text-amber-400 animate-spin-slow" />;
+    if (weather.condition === 'sunny') return <Sun className="h-5 w-5 sm:h-6 sm:w-6 text-amber-400" />;
     if (weather.condition === 'rainy' || weather.condition === 'storm') {
-      return <CloudRain className="w-6 h-6 text-blue-400" />;
+      return <CloudRain className="h-5 w-5 sm:h-6 sm:w-6 text-sky-400" />;
     }
-    return <CloudSun className="w-6 h-6 text-amber-300" />;
+    return <CloudSun className="h-5 w-5 sm:h-6 sm:w-6 text-amber-300" />;
   };
 
+  // Standby screen when account has zero slides registered yet
   if (!currentItem) {
+    const hostDisplay = typeof window !== 'undefined' ? window.location.host : 'seusite.com';
+    const displaySlug = screen?.slug || slug || 'tv1';
+    const displayCode = (screen?.pairingCode || '').replace(/\D/g, '').slice(0, 4);
+
     return (
-      <div className="w-screen h-screen bg-slate-950 flex flex-col items-center justify-between text-white p-8 text-center select-none font-['Plus_Jakarta_Sans']">
-        {/* Top Standby Header */}
-        <div className="w-full flex items-center justify-between">
+      <div className="flex min-h-[100dvh] w-screen flex-col items-center justify-between bg-zinc-950 p-5 sm:p-8 text-center text-white select-none">
+        <div className="flex w-full items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="font-extrabold tracking-tight text-white  text-lg">
-              BM<span className="text-blue-500">CAST</span>
+            <span className="text-base sm:text-lg font-extrabold tracking-tight text-white">
+              BM <span className="text-blue-500">CAST</span>
             </span>
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
-              STANDBY
-            </span>
+            <span className="text-xs text-zinc-400">· Aguardando slides</span>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="text-sm font-bold text-white ">{formattedTime}</div>
-            <div className="text-xs text-slate-400">{weather.temp}°C {weather.city}</div>
+          <div className="flex items-center gap-3 text-xs sm:text-sm">
+            <span className="font-bold tabular-nums text-white">{formattedTime}</span>
+            <span className="text-zinc-400">
+              {weather.temp}°C {weather.city}
+            </span>
           </div>
         </div>
 
-        {/* Center Standby Box */}
-        <div className="max-w-md p-8 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl space-y-4">
-          <div className="w-12 h-12 rounded-2xl bg-blue-600/20 text-blue-400 border border-blue-500/30 flex items-center justify-center mx-auto">
-            <Store className="w-6 h-6" />
+        <div className="w-full max-w-md rounded-3xl border border-zinc-800 bg-zinc-900/90 p-6 sm:p-8 shadow-2xl space-y-4">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600/20 text-blue-400 ring-1 ring-blue-500/30">
+            <Store className="h-6 w-6" />
           </div>
-          <h2 className="text-xl font-bold  text-white">
-            {screen?.name || 'TV Conectada'}
+          <h2 className="text-lg sm:text-xl font-extrabold text-white">
+            {screen?.name || 'Tela Conectada'}
           </h2>
-          <p className="text-xs text-slate-400 leading-relaxed">
-            Esta tela está online e sincronizada com a nuvem. Adicione slides na programação pelo painel de controle para iniciar a transmissão.
+          <p className="text-xs sm:text-sm leading-relaxed text-zinc-400">
+            Sua tela está conectada e pronta. Envie seus slides pelo painel para iniciar a exibição automaticamente.
           </p>
 
-          <div className="pt-2">
-            <span className="text-[11px]  text-slate-500">
-              Código de Pareamento: <strong className="text-blue-400">{screen?.pairingCode || 'TV-1001'}</strong>
-            </span>
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-3.5 space-y-1 text-xs">
+            <div className="font-mono font-bold text-blue-400 truncate">
+              {hostDisplay}/{displaySlug}
+            </div>
+            {displayCode && (
+              <div className="text-zinc-400">
+                Código rápido: <strong className="font-mono text-white">{displayCode}</strong>
+              </div>
+            )}
           </div>
 
           {onExit && (
-            <div className="pt-2">
+            <div className="pt-1">
               <button
+                type="button"
                 onClick={onExit}
-                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-full transition-all cursor-pointer"
+                className="w-full sm:w-auto rounded-2xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-blue-500 transition cursor-pointer"
               >
-                Voltar ao Painel Administrativo
+                Voltar ao Painel
               </button>
             </div>
           )}
         </div>
 
-        {/* Bottom footer */}
-        <div className="text-xs text-slate-500 ">
-          BM CAST • Transmissão Digital Indoor
+        <div className="text-xs text-zinc-500">
+          BM CAST · Transmissão Otimizada para TVs e Totens
         </div>
       </div>
     );
   }
 
-  // QR Code Image Resolution
   const slideQr = currentItem.qrConfig;
   const showQr = slideQr?.showQrCode;
   const qrImage =
     slideQr?.qrCodeType === 'custom_upload' && slideQr?.qrCodeCustomImage
       ? slideQr.qrCodeCustomImage
       : slideQr?.qrCodeUrl
-      ? generatedQrMap[slideQr.qrCodeUrl] || ''
-      : '';
+        ? generatedQrMap[slideQr.qrCodeUrl] || ''
+        : '';
 
-  // Brand Overlay Configuration
   const slideBrand = currentItem.brandConfig;
-  const showBrand = slideBrand?.showBrand;
-  const brandName = slideBrand?.brandName || screen?.brandName || 'BM CAST';
+  const showBrand = Boolean(
+    slideBrand?.showBrand &&
+      (slideBrand?.brandName || screen?.brandName || companyNameFallback || slideBrand?.brandLogo)
+  );
+  const brandName =
+    slideBrand?.brandName || screen?.brandName || companyNameFallback || '';
   const brandSlogan = slideBrand?.brandSlogan || screen?.brandSlogan || '';
   const brandLogo = slideBrand?.brandLogo || screen?.brandLogo || '';
   const brandAccent = slideBrand?.accentColor || '#2563EB';
   const brandPosition = slideBrand?.brandPosition || 'top-left';
 
-  // Category Overlay Details
   const overlay = currentItem.categoryOverlay;
+  const imageFit = overlay?.imageFit || 'cover';
+  const userDarkness = typeof overlay?.overlayOpacity === 'number' ? overlay.overlayOpacity : 0;
+
+  const hasBottomTextOverlay = Boolean(
+    (overlay?.showOverlayBadge !== false && overlay?.badgeText?.trim()) ||
+      overlay?.headline?.trim() ||
+      overlay?.subheadline?.trim() ||
+      (overlay?.showPriceTag !== false &&
+        (overlay?.priceOriginal?.trim() || overlay?.pricePromo?.trim()))
+  );
 
   return (
     <div
       ref={containerRef}
-      onMouseMove={handleMouseMove}
-      className="relative w-screen h-screen bg-black overflow-hidden select-none cursor-none"
+      onMouseMove={handleRevealControls}
+      onTouchStart={handleRevealControls}
+      onClick={handleRevealControls}
+      className="relative h-[100dvh] w-screen overflow-hidden bg-black select-none"
       style={{ cursor: showControls ? 'default' : 'none' }}
     >
-      {/* 1. SLIDE BACKGROUND MEDIA (IMAGE / VIDEO) */}
-      <div className="absolute inset-0 w-full h-full overflow-hidden">
-        {currentItem.url ? (
+      {/* 1. HIGH-CLARITY SLIDE MEDIA (Zero forced darkening when pure image!) */}
+      <div className="absolute inset-0 h-full w-full overflow-hidden bg-black">
+        {currentItem.url && !mediaLoadError ? (
           currentItem.type === 'video' ? (
             <video
               key={currentItem.url}
@@ -378,74 +388,100 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
               autoPlay
               loop
               muted
-              className="w-full h-full object-cover"
+              playsInline
+              onError={() => setMediaLoadError(true)}
+              className={`h-full w-full ${
+                imageFit === 'contain' ? 'object-contain' : 'object-cover'
+              }`}
             />
           ) : (
-            <img
-              key={currentItem.url}
-              src={currentItem.url}
-              alt={currentItem.title}
-              className="w-full h-full object-cover transition-opacity duration-700 ease-in-out"
-            />
+            <>
+              {imageFit === 'contain' && (
+                <img
+                  src={currentItem.url}
+                  alt=""
+                  aria-hidden="true"
+                  className="absolute inset-0 h-full w-full scale-110 object-cover opacity-40 blur-2xl"
+                />
+              )}
+              <img
+                key={currentItem.url}
+                src={currentItem.url}
+                alt={currentItem.title}
+                decoding="async"
+                fetchPriority="high"
+                onError={() => setMediaLoadError(true)}
+                className={`relative z-10 h-full w-full transition-opacity duration-500 ease-out ${
+                  imageFit === 'contain' ? 'object-contain' : 'object-cover'
+                }`}
+              />
+            </>
           )
         ) : (
           <div
-            className="w-full h-full flex items-center justify-center transition-colors duration-700"
+            className="flex h-full w-full items-center justify-center"
             style={{
-              backgroundColor: currentItem.categoryOverlay?.accentColor
-                ? `${currentItem.categoryOverlay.accentColor}20`
-                : '#0b1120',
+              background: `linear-gradient(135deg, ${
+                overlay?.accentColor || brandAccent || '#2563EB'
+              }45 0%, #090d16 100%)`,
             }}
           />
         )}
 
-        {/* Ambient Gradient for legibility */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-black/75 pointer-events-none" />
+        {/* Explicit user-configured darkening */}
+        {userDarkness > 0 && (
+          <div
+            className="pointer-events-none absolute inset-0 z-15"
+            style={{ backgroundColor: `rgba(0, 0, 0, ${userDarkness / 100})` }}
+          />
+        )}
+
+        {/* Smart legibility gradient ONLY when bottom text/prices are present */}
+        {hasBottomTextOverlay && userDarkness < 40 && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-15 h-1/2 bg-gradient-to-t from-black/80 via-black/35 to-transparent" />
+        )}
       </div>
 
-      {/* 2. PROGRESS BAR AT TOP */}
-      <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/20 z-40 overflow-hidden">
+      {/* 2. SLIM PROGRESS BAR AT TOP */}
+      <div className="absolute left-0 right-0 top-0 z-40 h-1 bg-white/15 overflow-hidden">
         <div
-          className="h-full bg-blue-500 transition-all duration-100 ease-linear shadow-lg shadow-blue-500"
+          className="h-full bg-blue-500 transition-all duration-100 ease-linear"
           style={{ width: `${progressPercent}%` }}
         />
       </div>
 
-      {/* 3. TOP BAR: COMPANY BRAND (IF ACTIVE) + CLOCK + ACCURATE WEATHER */}
-      <div className="absolute top-0 inset-x-0 p-5 sm:p-7 flex items-start justify-between z-30 pointer-events-none">
-        {/* BRAND SECTION (Se o usuário escolheu mostrar a marca neste slide) */}
+      {/* 3. TOP BAR: OPTIONAL BRAND + LIVE WEATHER & CLOCK */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-2 p-3 sm:p-6">
         {showBrand ? (
           <div
-            className={`flex items-center gap-3 transition-all ${
+            className={`flex items-center gap-2.5 min-w-0 ${
               brandPosition === 'top-right' ? 'order-2' : 'order-1'
             }`}
           >
             <div
-              className="flex items-center gap-3 px-3.5 py-2 rounded-2xl bg-black/85 border shadow-md"
-              style={{
-                borderColor: `${brandAccent}60`,
-              }}
+              className="flex items-center gap-2.5 rounded-2xl border bg-black/75 px-3 py-2 shadow-lg backdrop-blur-md"
+              style={{ borderColor: `${brandAccent}60` }}
             >
               {brandLogo ? (
                 <img
                   src={brandLogo}
                   alt="Logo"
-                  className="w-8 h-8 object-contain rounded"
+                  className="h-7 w-7 sm:h-8 sm:w-8 rounded object-contain shrink-0"
                 />
               ) : (
                 <div
-                  className="w-8 h-8 rounded flex items-center justify-center text-white"
+                  className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg text-white"
                   style={{ backgroundColor: brandAccent }}
                 >
-                  <Store className="w-4 h-4" />
+                  <Store className="h-4 w-4" />
                 </div>
               )}
-              <div>
-                <h1 className="text-sm sm:text-base font-bold text-white  tracking-wide uppercase leading-tight drop-shadow">
+              <div className="min-w-0">
+                <h1 className="truncate text-xs sm:text-base font-extrabold uppercase leading-tight tracking-wide text-white">
                   {brandName}
                 </h1>
                 {brandSlogan && (
-                  <p className="text-[11px] text-slate-300 font-medium tracking-normal mt-0.5 max-w-sm truncate drop-shadow">
+                  <p className="hidden sm:block max-w-xs truncate text-[11px] font-medium text-zinc-300">
                     {brandSlogan}
                   </p>
                 )}
@@ -456,130 +492,132 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
           <div className="order-1" />
         )}
 
-        {/* WEATHER & CLOCK WIDGET (Top Corner) */}
-        <div className="order-3 flex items-center gap-2">
-          {/* REAL WEATHER API WIDGET */}
-          <div className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-black/85 border border-slate-800 shadow-md text-white">
-            <div className="text-blue-400">
-              {renderWeatherIcon()}
-            </div>
+        <div className="order-3 flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <div className="flex items-center gap-2 rounded-2xl border border-white/15 bg-black/75 px-2.5 py-1.5 sm:px-3 sm:py-2 text-white shadow-lg backdrop-blur-md">
+            <div>{renderWeatherIcon()}</div>
             <div>
               <div className="flex items-baseline gap-1.5 leading-none">
-                <span className="text-base sm:text-lg font-bold  tracking-tight tabular-nums">
+                <span className="text-sm sm:text-lg font-bold tracking-tight tabular-nums">
                   {weather.temp}°C
                 </span>
-                <span className="text-xs text-slate-300 truncate max-w-[100px]">
+                <span className="hidden sm:inline max-w-[110px] truncate text-xs text-zinc-300">
                   {weather.city}
                 </span>
               </div>
-              <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mt-0.5 ">
+              <div className="hidden sm:flex items-center gap-1.5 text-[10px] text-zinc-400 mt-0.5">
                 <span>{weather.conditionText}</span>
                 <span aria-hidden="true">·</span>
-                <span className="tabular-nums">{weather.humidity}% umid</span>
+                <span className="tabular-nums">{weather.humidity}%</span>
               </div>
             </div>
           </div>
 
-          {/* REAL DIGITAL CLOCK */}
-          <div className="px-3 py-2 rounded-2xl bg-black/85 border border-slate-800 shadow-md text-right">
-            <div className="text-base sm:text-lg font-bold text-white  tracking-tight leading-none tabular-nums">
+          <div className="rounded-2xl border border-white/15 bg-black/75 px-2.5 py-1.5 sm:px-3 sm:py-2 text-right shadow-lg backdrop-blur-md">
+            <div className="text-sm sm:text-lg font-bold leading-none tracking-tight text-white tabular-nums">
               {formattedTime}
             </div>
-            <div className="text-[10px] text-slate-400 capitalize mt-0.5 tracking-wide">
+            <div className="hidden sm:block mt-0.5 text-[10px] capitalize tracking-wide text-zinc-400">
               {formattedDate}
             </div>
           </div>
         </div>
       </div>
 
-      {/* 4. SLIDE CONTENT & PRICING BANNER (Bottom-Left) */}
-      <div className="absolute bottom-16 inset-x-0 p-6 sm:p-10 z-30 pointer-events-none flex flex-col justify-end">
-        <div className="max-w-3xl space-y-3 animate-in fade-in slide-in-from-bottom-6 duration-500">
-          {/* Category Badge Tag */}
-          {overlay?.showOverlayBadge !== false && overlay?.badgeText && (
-            <div className="inline-flex items-center gap-2">
-              <span
-                className="px-3 py-1 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider text-white shadow-xl backdrop-blur-md"
-                style={{
-                  backgroundColor: overlay?.accentColor || brandAccent || '#2563EB',
-                }}
-              >
-                {overlay.badgeText}
-              </span>
-            </div>
-          )}
-
-          {/* Main Headline */}
-          {overlay?.headline && (
-            <h2 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-none drop-shadow-2xl">
-              {overlay.headline}
-            </h2>
-          )}
-
-          {/* Subheadline / Description */}
-          {overlay?.subheadline && (
-            <p className="text-sm sm:text-lg text-slate-200 font-medium max-w-2xl leading-relaxed drop-shadow-lg">
-              {overlay.subheadline}
-            </p>
-          )}
-
-          {/* Price Tags */}
-          {overlay?.showPriceTag !== false && (overlay?.priceOriginal || overlay?.pricePromo) && (
-            <div className="flex items-baseline gap-3 pt-2">
-              {overlay.priceOriginal && (
-                <div className="text-base sm:text-xl text-slate-400 line-through font-semibold drop-shadow">
-                  {overlay.priceOriginal}
-                </div>
-              )}
-              {overlay.pricePromo && (
-                <div
-                  className="text-2xl sm:text-4xl font-black text-white px-4 py-1.5 rounded-2xl shadow-2xl backdrop-blur-md border border-white/20"
+      {/* 4. SLIDE TEXT & PRICING OVERLAY (Only rendered when present) */}
+      {hasBottomTextOverlay && (
+        <div
+          className={`pointer-events-none absolute inset-x-0 z-30 flex flex-col justify-end p-4 sm:p-10 ${
+            ticker.enabled && ticker.text ? 'bottom-12 sm:bottom-14' : 'bottom-2 sm:bottom-4'
+          }`}
+        >
+          <div className="max-w-3xl space-y-2 sm:space-y-3">
+            {overlay?.showOverlayBadge !== false && overlay?.badgeText && (
+              <div className="inline-flex items-center">
+                <span
+                  className="rounded-lg px-2.5 py-1 text-[10px] sm:text-sm font-black uppercase tracking-wider text-white shadow-xl"
                   style={{
                     backgroundColor: overlay?.accentColor || brandAccent || '#2563EB',
                   }}
                 >
-                  {overlay.pricePromo}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+                  {overlay.badgeText}
+                </span>
+              </div>
+            )}
 
-      {/* 5. QR CODE OVERLAY (DYNÂMICO OU UPLOAD REAL - POSICIONÁVEL) */}
+            {overlay?.headline && (
+              <h2 className="text-2xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-tight text-white drop-shadow-2xl">
+                {overlay.headline}
+              </h2>
+            )}
+
+            {overlay?.subheadline && (
+              <p className="max-w-2xl text-xs sm:text-lg font-medium leading-relaxed text-zinc-100 drop-shadow-lg">
+                {overlay.subheadline}
+              </p>
+            )}
+
+            {overlay?.showPriceTag !== false && (overlay?.priceOriginal || overlay?.pricePromo) && (
+              <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 pt-1 sm:pt-2">
+                {overlay.priceOriginal && (
+                  <div className="text-sm sm:text-xl font-semibold text-zinc-300 line-through drop-shadow">
+                    {overlay.priceOriginal}
+                  </div>
+                )}
+                {overlay.pricePromo && (
+                  <div
+                    className="rounded-xl sm:rounded-2xl border border-white/20 px-3.5 py-1 sm:px-4 sm:py-1.5 text-xl sm:text-4xl font-black text-white shadow-2xl"
+                    style={{
+                      backgroundColor: overlay?.accentColor || brandAccent || '#2563EB',
+                    }}
+                  >
+                    {overlay.pricePromo}
+                  </div>
+                )}
+                {overlay.discountPercent && (
+                  <span className="rounded-lg sm:rounded-xl bg-amber-400 px-2.5 py-1 text-xs sm:text-base font-extrabold text-slate-950 shadow-lg">
+                    {overlay.discountPercent}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 5. HIGH-RES QR CODE OVERLAY */}
       {showQr && qrImage && (
         <div
-          className={`absolute z-35 pointer-events-none ${
+          className={`pointer-events-none absolute z-35 ${
             slideQr.qrCodePosition === 'top-left'
-              ? 'top-24 left-8'
+              ? 'left-4 top-20 sm:left-8 sm:top-24'
               : slideQr.qrCodePosition === 'top-right'
-              ? 'top-24 right-8'
-              : slideQr.qrCodePosition === 'bottom-left'
-              ? 'bottom-24 left-8'
-              : slideQr.qrCodePosition === 'center-right'
-              ? 'top-1/2 -translate-y-1/2 right-8'
-              : 'bottom-24 right-8' // Default: bottom-right
+                ? 'right-4 top-20 sm:right-8 sm:top-24'
+                : slideQr.qrCodePosition === 'bottom-left'
+                  ? 'bottom-16 left-4 sm:bottom-24 sm:left-8'
+                  : slideQr.qrCodePosition === 'center-right'
+                    ? 'right-4 top-1/2 -translate-y-1/2 sm:right-8'
+                    : 'bottom-16 right-4 sm:bottom-24 sm:right-8'
           }`}
         >
-          <div className="bg-white/95 backdrop-blur-xl p-3 sm:p-4 rounded-3xl shadow-2xl border-2 border-white flex flex-col items-center animate-in zoom-in-95 duration-500">
+          <div className="flex flex-col items-center rounded-2xl sm:rounded-3xl border-2 border-white bg-white p-2.5 sm:p-4 shadow-2xl">
             <div
-              className={`rounded-2xl overflow-hidden ${
+              className={`overflow-hidden rounded-xl ${
                 slideQr.qrCodeSize === 'small'
-                  ? 'w-24 h-24'
+                  ? 'h-20 w-20 sm:h-24 sm:w-24'
                   : slideQr.qrCodeSize === 'large'
-                  ? 'w-44 h-44'
-                  : 'w-32 h-32 sm:w-36 sm:h-36'
+                    ? 'h-32 w-32 sm:h-44 sm:w-44'
+                    : 'h-24 w-24 sm:h-36 sm:w-36'
               }`}
             >
               <img
                 src={qrImage}
                 alt="QR Code"
-                className="w-full h-full object-contain"
+                className="h-full w-full object-contain"
               />
             </div>
             {slideQr.qrCodeLabel && (
-              <div className="mt-2 text-center max-w-[160px]">
-                <p className="text-[11px] sm:text-xs font-black text-slate-900 leading-tight">
+              <div className="mt-1.5 max-w-[150px] text-center">
+                <p className="text-[10px] sm:text-xs font-black leading-tight text-slate-900">
                   {slideQr.qrCodeLabel}
                 </p>
               </div>
@@ -590,22 +628,20 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
 
       {/* 6. BOTTOM RUNNING TICKER MARQUEE BAR */}
       {ticker.enabled && ticker.text && (
-        <div className="absolute bottom-0 inset-x-0 h-12 sm:h-14 bg-[#0A0C14]/95 backdrop-blur border-t border-[#1E2436] z-30 flex items-center overflow-hidden">
-          {/* Professional Broadcast Badge */}
-          <div className="h-full px-4 sm:px-6 bg-blue-600 text-white font-bold text-xs sm:text-sm tracking-wider uppercase flex items-center gap-2 shrink-0 z-10 shadow-md">
-            <Radio className="w-4 h-4 text-white" />
+        <div className="absolute bottom-0 inset-x-0 z-30 flex h-10 sm:h-14 items-center overflow-hidden border-t border-white/10 bg-zinc-950/95 backdrop-blur">
+          <div className="z-10 flex h-full shrink-0 items-center gap-1.5 sm:gap-2 bg-blue-600 px-3 sm:px-6 text-[11px] sm:text-sm font-bold uppercase tracking-wider text-white shadow-md">
+            <Radio className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
             <span>{ticker.accentTitle || 'COMUNICADO'}</span>
           </div>
 
-          {/* Marquee Content */}
-          <div className="flex-1 overflow-hidden whitespace-nowrap relative">
+          <div className="relative flex-1 overflow-hidden whitespace-nowrap">
             <div
-              className={`inline-block text-sm sm:text-base font-semibold text-white tracking-wide ${
+              className={`inline-block text-xs sm:text-base font-semibold tracking-wide text-white ${
                 ticker.speed === 'slow'
                   ? 'animate-[marquee_45s_linear_infinite]'
                   : ticker.speed === 'fast'
-                  ? 'animate-[marquee_20s_linear_infinite]'
-                  : 'animate-[marquee_30s_linear_infinite]'
+                    ? 'animate-[marquee_20s_linear_infinite]'
+                    : 'animate-[marquee_30s_linear_infinite]'
               }`}
             >
               {ticker.text} &nbsp; • &nbsp; {ticker.text}
@@ -614,64 +650,69 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
         </div>
       )}
 
-      {/* 7. FLOATING CONTROLS (Appears on Mouse Movement, Auto-Hides) */}
+      {/* 7. FLOATING CONTROLS (Mouse or Touch) */}
       <div
-        className={`fixed top-5 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 pointer-events-auto ${
-          showControls ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'
+        onClick={(e) => e.stopPropagation()}
+        className={`fixed left-1/2 top-4 -translate-x-1/2 z-50 max-w-[calc(100vw-1.5rem)] transition-all duration-300 pointer-events-auto ${
+          showControls
+            ? 'translate-y-0 opacity-100'
+            : '-translate-y-4 opacity-0 pointer-events-none'
         }`}
       >
-        <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#121520]/95 backdrop-blur border border-[#22293C] shadow-2xl text-white text-xs">
+        <div className="flex items-center gap-1.5 sm:gap-2 rounded-2xl border border-white/15 bg-zinc-950/95 px-3 py-2 text-xs text-white shadow-2xl backdrop-blur">
           {onExit && (
-            <button
-              onClick={onExit}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#181D2B] hover:bg-[#20273A] transition-colors cursor-pointer text-slate-300 hover:text-white"
-              title="Voltar ao Painel (Esc)"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Painel
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={onExit}
+                className="flex items-center gap-1.5 rounded-xl bg-zinc-800 px-3 py-1.5 font-semibold text-zinc-200 hover:bg-zinc-700 hover:text-white transition cursor-pointer"
+                title="Voltar ao Painel"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span>Painel</span>
+              </button>
+              <div className="h-4 w-px bg-zinc-800" />
+            </>
           )}
 
-          <div className="h-4 w-px bg-[#262F48] mx-1" />
-
           <button
+            type="button"
             onClick={handlePrevSlide}
-            className="p-2 rounded-full hover:bg-[#1E253B] transition-colors cursor-pointer text-slate-300 hover:text-white"
-            title="Slide Anterior (Seta Esquerda)"
+            className="rounded-full p-2 text-zinc-300 hover:bg-zinc-800 hover:text-white transition cursor-pointer"
+            title="Slide Anterior"
           >
-            <SkipBack className="w-4 h-4" />
+            <SkipBack className="h-4 w-4" />
           </button>
 
           <button
+            type="button"
             onClick={() => setIsPlaying((p) => !p)}
-            className="p-2 rounded-full bg-blue-600 hover:bg-blue-500 text-white transition-colors cursor-pointer"
-            title="Pausar / Reproduzir (Espaço)"
+            className="rounded-full bg-blue-600 p-2 text-white hover:bg-blue-500 transition cursor-pointer"
+            title="Pausar / Reproduzir"
           >
-            {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
           </button>
 
           <button
+            type="button"
             onClick={handleNextSlide}
-            className="p-2 rounded-full hover:bg-[#1E253B] transition-colors cursor-pointer text-slate-300 hover:text-white"
-            title="Próximo Slide (Seta Direita)"
+            className="rounded-full p-2 text-zinc-300 hover:bg-zinc-800 hover:text-white transition cursor-pointer"
+            title="Próximo Slide"
           >
-            <SkipForward className="w-4 h-4" />
+            <SkipForward className="h-4 w-4" />
           </button>
 
-          <div className="h-4 w-px bg-[#262F48] mx-1" />
-
-          <span className=" text-slate-300 px-1 font-semibold">
-            {currentIndex + 1} / {activeItems.length}
+          <span className="px-1 font-semibold tabular-nums text-zinc-300">
+            {currentIndex + 1}/{activeItems.length}
           </span>
 
-          <div className="h-4 w-px bg-[#262F48] mx-1" />
-
           <button
+            type="button"
             onClick={toggleFullscreen}
-            className="p-2 rounded-full hover:bg-[#1E253B] transition-colors cursor-pointer text-slate-300 hover:text-white"
-            title="Tela Cheia (F)"
+            className="rounded-full p-2 text-zinc-300 hover:bg-zinc-800 hover:text-white transition cursor-pointer"
+            title="Tela Cheia"
           >
-            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </button>
         </div>
       </div>
