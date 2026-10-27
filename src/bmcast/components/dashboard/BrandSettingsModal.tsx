@@ -105,7 +105,7 @@ export const BrandSettingsModal: React.FC<BrandSettingsModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 p-0 sm:p-4 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="relative flex max-h-[94dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl sm:rounded-[2rem] border border-border bg-card p-5 sm:p-6 text-card-foreground shadow-2xl">
+      <div className="relative flex max-h-[94dvh] w-full max-w-xl flex-col overflow-hidden rounded-t-3xl sm:rounded-[2rem] border border-border bg-card p-5 sm:p-6 text-card-foreground shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border pb-3.5">
           <div className="flex items-center gap-3">
@@ -301,16 +301,16 @@ export const BrandSettingsModal: React.FC<BrandSettingsModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground transition cursor-pointer"
+            className="flex-1 sm:flex-none rounded-full px-4 py-2.5 sm:py-2 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground transition cursor-pointer"
           >
             Cancelar
           </button>
           <button
             type="button"
             onClick={handleSave}
-            className="inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2 text-xs font-bold text-primary-foreground shadow-xs hover:opacity-95 active:scale-95 transition cursor-pointer"
+            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-full bg-primary px-5 py-2.5 sm:py-2 text-xs font-bold text-primary-foreground shadow-xs hover:opacity-95 active:scale-95 transition cursor-pointer"
           >
-            <Check className="h-3.5 w-3.5" />
+            <Check className="h-3.5 w-3.5 shrink-0" />
             <span>{setupHint ? 'Salvar e Continuar' : 'Salvar Marca'}</span>
           </button>
         </div>

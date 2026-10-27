@@ -10,6 +10,7 @@ import {
   Monitor,
   Hash,
   Link2,
+  Plus,
 } from 'lucide-react';
 import { Screen } from '../../types/signage';
 import { qrService } from '../../services/qrService';
@@ -22,6 +23,7 @@ interface ConnectTVModalProps {
   selectedScreenSlug: string;
   onSelectScreenSlug: (slug: string) => void;
   onLaunchPlayer: (slug: string) => void;
+  onRegisterFirstTV?: (() => void) | undefined;
 }
 
 export const ConnectTVModal: React.FC<ConnectTVModalProps> = ({
@@ -31,34 +33,36 @@ export const ConnectTVModal: React.FC<ConnectTVModalProps> = ({
   selectedScreenSlug,
   onSelectScreenSlug,
   onLaunchPlayer,
+  onRegisterFirstTV,
 }) => {
   const [copiedType, setCopiedType] = useState<'slug' | 'code' | null>(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'link' | 'guide'>('link');
 
   const activeScreen =
-    screens.find((s) => s.slug === selectedScreenSlug) ||
-    screens[0] || {
-      id: 'default',
-      name: 'TV Principal',
-      slug: 'tv1',
-      location: 'Ambiente Principal',
-      orientation: 'landscape' as const,
-      pairingCode: '1024',
-    };
+    screens.find((s) => s.slug === selectedScreenSlug) || screens[0] || null;
 
   const hostDisplay =
     typeof window !== 'undefined' ? window.location.host : 'seusite.com';
 
-  const numericCode =
-    (activeScreen.pairingCode || '').replace(/\D/g, '').slice(0, 4) || activeScreen.slug;
+  const numericCode = activeScreen
+    ? (activeScreen.pairingCode || '').replace(/\D/g, '').slice(0, 4) || activeScreen.slug
+    : '';
 
-  const tvShortUrl = supabaseService.buildScreenShareUrl(activeScreen.slug);
-  const tvNumericUrl = supabaseService.buildScreenShareUrl(numericCode);
+  const tvShortUrl = activeScreen
+    ? supabaseService.buildScreenShareUrl(activeScreen.slug)
+    : '';
+  const tvNumericUrl = activeScreen
+    ? supabaseService.buildScreenShareUrl(numericCode)
+    : '';
 
   useEffect(() => {
     let isCancelled = false;
     const generate = async () => {
+      if (!tvShortUrl) {
+        setQrCodeDataUrl('');
+        return;
+      }
       try {
         const dataUrl = await qrService.generateDataUrl(tvShortUrl, '#000000', '#ffffff');
         if (!isCancelled) {
@@ -147,6 +151,35 @@ export const ConnectTVModal: React.FC<ConnectTVModalProps> = ({
         {/* Modal Body */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 space-y-5">
           {activeTab === 'link' ? (
+            !activeScreen ? (
+              <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border bg-muted/30 px-5 py-10 sm:p-12 text-center space-y-4">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 text-primary ring-1 ring-primary/25">
+                  <Tv className="h-7 w-7" />
+                </div>
+                <div className="max-w-md space-y-1.5">
+                  <h4 className="text-base sm:text-lg font-extrabold tracking-tight text-foreground">
+                    Nenhuma TV cadastrada ainda
+                  </h4>
+                  <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                    Cadastre sua primeira tela para gerar o link curto, o código numérico de 4 dígitos e o QR Code da transmissão.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onRegisterFirstTV) {
+                      onRegisterFirstTV();
+                    } else {
+                      onClose();
+                    }
+                  }}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-primary px-6 text-xs sm:text-sm font-bold text-primary-foreground shadow-sm hover:opacity-95 active:scale-[0.98] transition cursor-pointer"
+                >
+                  <Plus className="h-4 w-4 shrink-0" />
+                  <span>Cadastrar Minha Primeira TV</span>
+                </button>
+              </div>
+            ) : (
             <div className="space-y-4">
               {screens.length > 1 && (
                 <div className="rounded-2xl border border-border bg-muted/40 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
@@ -292,6 +325,7 @@ export const ConnectTVModal: React.FC<ConnectTVModalProps> = ({
                 </div>
               </div>
             </div>
+            )
           ) : (
             <div className="space-y-3">
               <div className="rounded-2xl border border-border bg-muted/35 p-4 space-y-2">
@@ -304,7 +338,7 @@ export const ConnectTVModal: React.FC<ConnectTVModalProps> = ({
                     Abra o aplicativo <strong>Internet / Navegador Web</strong> na sua Smart TV.
                   </li>
                   <li>
-                    Digite apenas <strong className="font-mono text-foreground">{hostDisplay}/{activeScreen.slug}</strong> ou <strong className="font-mono text-foreground">{hostDisplay}/{numericCode}</strong> (sem símbolos complicados).
+                    Digite apenas <strong className="font-mono text-foreground">{hostDisplay}/{activeScreen ? activeScreen.slug : 'tv1'}</strong> ou <strong className="font-mono text-foreground">{hostDisplay}/{activeScreen ? numericCode : '1024'}</strong> (sem símbolos complicados).
                   </li>
                   <li>
                     Ative a <strong>Tela Cheia</strong> para transmissão otimizada para TVs e Totens.
@@ -322,7 +356,7 @@ export const ConnectTVModal: React.FC<ConnectTVModalProps> = ({
                     Abra o navegador instalado na TV (como <strong>TV Bro</strong>, <strong>Silk</strong> ou <strong>Chrome</strong>).
                   </li>
                   <li>
-                    Digite o atalho curto <strong className="font-mono text-foreground">{hostDisplay}/{activeScreen.slug}</strong> e salve nos favoritos da TV para abrir com 1 clique.
+                    Digite o atalho curto <strong className="font-mono text-foreground">{hostDisplay}/{activeScreen ? activeScreen.slug : 'tv1'}</strong> e salve nos favoritos da TV para abrir com 1 clique.
                   </li>
                 </ol>
               </div>

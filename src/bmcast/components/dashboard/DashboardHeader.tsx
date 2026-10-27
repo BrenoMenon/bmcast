@@ -114,7 +114,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
       </div>
 
       {/* Right: Connect TV + Primary CTA + Icon-Only Theme Switcher + Profile Dropdown */}
-      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+      <div className="flex items-center gap-1 sm:gap-2 shrink-0">
         <button
           type="button"
           onClick={onOpenConnectTVModal}

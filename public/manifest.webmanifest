@@ -1,0 +1,23 @@
+{
+  "name": "BM CAST",
+  "short_name": "BM CAST",
+  "description": "Plataforma de Digital Signage otimizada para TVs e totens.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0D1420",
+  "theme_color": "#0D1420",
+  "icons": [
+    {
+      "src": "/bmcast-icon.png?v=7",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png?v=7",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

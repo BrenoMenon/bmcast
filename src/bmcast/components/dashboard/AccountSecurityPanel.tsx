@@ -57,6 +57,15 @@ export const AccountSecurityPanel: React.FC<Props> = ({ onAccountDeleted }) => {
           return;
         }
         await storageService.clearAll();
+        try {
+          sessionStorage.setItem(
+            'bmcast_flash_msg',
+            'Sua conta e todos os seus dados foram excluídos com sucesso.'
+          );
+        } catch {
+          // ignore storage quota errors
+        }
+        setMsg({ ok: true, text: 'Conta excluída com sucesso!' });
         onAccountDeleted();
         return;
       }
@@ -107,7 +116,7 @@ export const AccountSecurityPanel: React.FC<Props> = ({ onAccountDeleted }) => {
             key={id}
             type="button"
             onClick={() => reset(id)}
-            className={`flex items-center justify-center gap-1.5 rounded-2xl border px-3 py-2.5 text-xs font-semibold transition cursor-pointer ${
+            className={`flex h-10 items-center justify-center gap-1.5 rounded-2xl border px-2.5 text-[11px] sm:text-xs font-semibold leading-none whitespace-nowrap transition cursor-pointer ${
               open === id
                 ? danger
                   ? 'border-destructive bg-destructive text-destructive-foreground'
@@ -118,7 +127,7 @@ export const AccountSecurityPanel: React.FC<Props> = ({ onAccountDeleted }) => {
             }`}
           >
             <Icon className="h-3.5 w-3.5 shrink-0" />
-            <span>{label}</span>
+            <span className="whitespace-nowrap">{label}</span>
           </button>
         ))}
       </div>

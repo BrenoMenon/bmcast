@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Lock,
   Mail,
@@ -54,6 +54,23 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [flashToast, setFlashToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const flash = sessionStorage.getItem('bmcast_flash_msg');
+      if (flash) {
+        sessionStorage.removeItem('bmcast_flash_msg');
+        setSuccessMsg(flash);
+        setFlashToast(flash);
+        const timer = setTimeout(() => setFlashToast(null), 6500);
+        return () => clearTimeout(timer);
+      }
+    } catch {
+      // ignore storage errors
+    }
+    return undefined;
+  }, []);
 
   const run = async (fn: () => Promise<void>) => {
     if (loading) return;
@@ -120,6 +137,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
 
   return (
     <div className="relative min-h-screen bg-background text-foreground flex flex-col justify-between font-sans transition-colors duration-200 overflow-x-hidden">
+      {flashToast && (
+        <div className="fixed top-4 left-4 right-16 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 z-50 flex items-center gap-2.5 rounded-2xl border border-emerald-500/40 bg-emerald-600 px-4 py-3 text-xs sm:text-sm font-semibold text-white shadow-xl animate-in fade-in slide-in-from-top-2">
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
+          <span>{flashToast}</span>
+        </div>
+      )}
       <div className="grid min-h-screen lg:grid-cols-2">
         {/* LEFT COLUMN: BLCORE HERO SHOWCASE */}
         <aside

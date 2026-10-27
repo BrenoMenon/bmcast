@@ -102,6 +102,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenPlayer, onSignOut })
   const [isTickerModalOpen, setIsTickerModalOpen] = useState(false);
   const [isConnectTVModalOpen, setIsConnectTVModalOpen] = useState(false);
   const [isTutorialModalOpen, setIsTutorialModalOpen] = useState(false);
+  const [screenCreateTrigger, setScreenCreateTrigger] = useState(0);
 
   // Guided first-run setup: company data -> weather -> ticker -> first slide
   const [setupStep, setSetupStep] = useState<null | 'brand' | 'weather' | 'ticker'>(null);
@@ -168,26 +169,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenPlayer, onSignOut })
     (async () => {
       await loadData(false);
       await storageService.syncFromSupabase(true);
-      if (!mounted) return;
-      const existingScreens = await storageService.getScreens();
-      if (existingScreens.length === 0) {
-        const { slug, pairingCode } = await storageService.generateUniqueShortSlug('tv');
-        const allPlaylists = await storageService.getPlaylists();
-        await storageService.saveScreen({
-          id: `scr_${Date.now()}`,
-          name: 'TV Principal',
-          location: 'Salão / Recepção',
-          slug,
-          pairingCode,
-          activePlaylistId: allPlaylists[0]?.id || 'pl_principal',
-          status: 'online',
-          resolution: '1080p',
-          orientation: 'landscape',
-          aspectRatio: '16:9',
-          lastPing: new Date().toISOString(),
-          pairedAt: new Date().toISOString(),
-        });
-      }
       if (mounted) {
         await loadData(true);
       }
@@ -226,41 +207,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenPlayer, onSignOut })
     }
   };
 
-  const ensureDefaultScreenExists = async (): Promise<string> => {
-    const currentScreens = await storageService.getScreens();
-    if (currentScreens.length > 0) {
-      return selectedScreenSlug || currentScreens[0]!.slug;
+  const handleLaunchActivePlayer = () => {
+    const activeSlug = selectedScreenSlug || screens[0]?.slug;
+    if (activeSlug) {
+      onOpenPlayer(activeSlug);
+      return;
     }
-
-    const { slug, pairingCode } = await storageService.generateUniqueShortSlug('tv');
-    const allPlaylists = await storageService.getPlaylists();
-    const defaultScreen: Screen = {
-      id: `scr_${Date.now()}`,
-      name: 'TV Principal',
-      location: 'Salão / Recepção',
-      slug,
-      pairingCode,
-      activePlaylistId: allPlaylists[0]?.id || 'pl_principal',
-      status: 'online',
-      resolution: '1080p',
-      orientation: 'landscape',
-      aspectRatio: '16:9',
-      lastPing: new Date().toISOString(),
-      pairedAt: new Date().toISOString(),
-    };
-    await storageService.saveScreen(defaultScreen);
-    setSelectedScreenSlug(defaultScreen.slug);
-    return defaultScreen.slug;
+    setActiveTab('screens');
+    setScreenCreateTrigger((c) => c + 1);
+    showToast('Cadastre sua primeira TV para iniciar a transmissão.', 'info');
   };
 
-  const handleLaunchActivePlayer = async () => {
-    const targetSlug = selectedScreenSlug || (await ensureDefaultScreenExists());
-    onOpenPlayer(targetSlug);
-  };
-
-  const handleOpenConnectTV = async () => {
-    await ensureDefaultScreenExists();
-    await loadData();
+  const handleOpenConnectTV = () => {
     setIsConnectTVModalOpen(true);
   };
 
@@ -278,7 +236,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenPlayer, onSignOut })
 
   const handleSlideSaved = async (savedItem: MediaItem, addToPlaylist: boolean) => {
     await storageService.saveMedia(savedItem, addToPlaylist);
-    await ensureDefaultScreenExists();
     showToast('Slide salvo na sua conta com sucesso!');
     loadData();
   };
@@ -443,7 +400,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenPlayer, onSignOut })
     defaultQrCodeUrl: '',
   };
 
-  const isSystemEmpty = mediaList.length === 0;
+  const isSystemEmpty = mediaList.length === 0 && screens.length === 0;
 
   const navItems: {
     id: TabType;
@@ -760,8 +717,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenPlayer, onSignOut })
                   <span className="text-xl sm:text-2xl font-extrabold tracking-tight text-foreground tabular-nums">
                     {screens.length}
                   </span>
-                  <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                    Online
+                  <span
+                    className={`text-[11px] font-semibold ${
+                      screens.length > 0
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : 'text-muted-foreground'
+                    }`}
+                  >
+                    {screens.length > 0 ? 'Online' : 'Nenhuma'}
                   </span>
                 </div>
               </div>
@@ -864,6 +827,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenPlayer, onSignOut })
               onSaveScreen={handleSaveScreen}
               onDeleteScreen={handleDeleteScreen}
               onLaunchPlayer={onOpenPlayer}
+              autoOpenCreateTrigger={screenCreateTrigger}
             />
           )}
         </main>
@@ -944,6 +908,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenPlayer, onSignOut })
         selectedScreenSlug={selectedScreenSlug}
         onSelectScreenSlug={setSelectedScreenSlug}
         onLaunchPlayer={onOpenPlayer}
+        onRegisterFirstTV={() => {
+          setIsConnectTVModalOpen(false);
+          setActiveTab('screens');
+          setScreenCreateTrigger((c) => c + 1);
+        }}
       />
 
       <TutorialModal
@@ -989,22 +958,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenPlayer, onSignOut })
             ? 'Passo 1 de 4 · Dados da empresa: nome, logo, cor e contatos. Depois seguimos para o clima.'
             : undefined
         }
-        onAccountDeleted={async () => {
-          await storageService.clearAll();
-          await storageService.saveConfig({
-            organizationName: '',
-            brandProfile: {
-              ...brandProfile,
-              name: '',
-              slogan: '',
-              logoUrl: '',
-              phoneWhatsApp: '',
-              instagramHandle: '',
-              defaultQrCodeUrl: '',
-              defaultQrCodeImage: '',
-              onboardingCompleted: false,
-            },
-          });
+        onAccountDeleted={() => {
           setIsBrandModalOpen(false);
           onSignOut?.();
         }}

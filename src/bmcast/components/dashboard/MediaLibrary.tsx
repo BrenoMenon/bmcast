@@ -296,7 +296,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                     <button
                       type="button"
                       onClick={() => onAddToPlaylist(item)}
-                      className="flex-1 h-9 rounded-xl border border-border bg-muted/60 px-3 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer"
+                      className="flex-1 h-9 rounded-xl border border-border bg-muted/60 px-3 text-xs font-semibold whitespace-nowrap text-foreground hover:bg-muted transition cursor-pointer"
                     >
                       + Exibir na TV
                     </button>

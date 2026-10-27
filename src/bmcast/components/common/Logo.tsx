@@ -17,21 +17,21 @@ export const Logo: React.FC<LogoProps> = ({
   forceLightText = false,
 }) => {
   const icon = {
-    sm: 'h-9 w-9 rounded-lg',
+    sm: 'h-8 w-8 sm:h-9 sm:w-9 rounded-lg',
     md: 'h-10 w-10 rounded-lg',
     lg: 'h-13 w-13 rounded-xl',
   }[size];
-  const title = { sm: 'text-base', md: 'text-lg', lg: 'text-2xl' }[size];
+  const title = { sm: 'text-sm sm:text-base', md: 'text-lg', lg: 'text-2xl' }[size];
   const sub = { sm: 'text-[9px]', md: 'text-[10px]', lg: 'text-[11px]' }[size];
 
   return (
-    <div className={`flex items-center gap-3 select-none ${className}`}>
+    <div className={`flex items-center gap-2 sm:gap-3 select-none ${className}`}>
       <img
         src={iconUrl}
         alt="BM CAST"
         width={52}
         height={52}
-        className={`shrink-0 object-cover shadow-sm ring-1 ring-primary/25 ${icon}`}
+        className={`shrink-0 bg-[#0D1420] object-cover shadow-sm ring-1 ring-primary/25 ${icon}`}
       />
       {showText && (
         <div className="flex min-w-0 flex-col justify-center leading-none">

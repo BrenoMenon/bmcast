@@ -351,7 +351,7 @@ export const WeatherModal: React.FC<WeatherModalProps> = ({
           <span className="text-[11px] text-muted-foreground truncate">
             Atualizado às {new Date(selectedWeather.lastFetchedAt).toLocaleTimeString('pt-BR')}
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex w-full sm:w-auto items-center gap-2">
             <button
               type="button"
               onClick={onClose}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Plus,
   Play,
@@ -21,6 +21,7 @@ interface ScreensManagerProps {
   onSaveScreen: (screen: Screen) => void;
   onDeleteScreen: (screenId: string) => void;
   onLaunchPlayer: (slug: string) => void;
+  autoOpenCreateTrigger?: number | undefined;
 }
 
 const sanitizeShortSlug = (raw: string): string =>
@@ -37,6 +38,7 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
   onSaveScreen,
   onDeleteScreen,
   onLaunchPlayer,
+  autoOpenCreateTrigger,
 }) => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [editingScreen, setEditingScreen] = useState<Screen | null>(null);
@@ -74,6 +76,13 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
       setIsModalOpen(true);
     }
   };
+
+  useEffect(() => {
+    if (autoOpenCreateTrigger && autoOpenCreateTrigger > 0) {
+      void handleOpenModal();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpenCreateTrigger]);
 
   const handleSave = async () => {
     if (!name.trim()) return;
