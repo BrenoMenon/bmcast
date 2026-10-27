@@ -61,6 +61,7 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
   const [progressPercent, setProgressPercent] = useState<number>(0);
+  const [isLoadingInitial, setIsLoadingInitial] = useState<boolean>(true);
   const [mediaLoadError, setMediaLoadError] = useState<boolean>(false);
 
   const [showControls, setShowControls] = useState<boolean>(false);
@@ -84,6 +85,8 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
       setCompanyNameFallback(bundle.config?.brandProfile?.name || '');
     } catch (e) {
       console.error('Falha ao carregar dados do player:', e);
+    } finally {
+      setIsLoadingInitial(false);
     }
   }, [slug]);
 
@@ -269,6 +272,19 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
     }
     return <CloudSun className="h-5 w-5 sm:h-6 sm:w-6 text-amber-300" />;
   };
+
+  if (isLoadingInitial) {
+    return (
+      <div className="flex min-h-[100dvh] w-screen items-center justify-center bg-zinc-950 text-white select-none">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-9 w-9 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+          <span className="text-xs font-semibold tracking-wide text-zinc-400">
+            Conectando transmissão...
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   // Standby screen when account has zero slides registered yet
   if (!currentItem) {
@@ -463,14 +479,16 @@ export const TVPlayer: React.FC<TVPlayerProps> = ({ slug, onExit }) => {
               style={{ borderColor: `${brandAccent}60` }}
             >
               {brandLogo ? (
-                <img
-                  src={brandLogo}
-                  alt="Logo"
-                  className="h-7 w-7 sm:h-8 sm:w-8 rounded object-contain shrink-0"
-                />
+                <div className="h-8 w-8 sm:h-9 sm:w-9 shrink-0 overflow-hidden rounded-full border border-white/20 bg-black">
+                  <img
+                    src={brandLogo}
+                    alt="Logo"
+                    className="block h-full w-full object-cover"
+                  />
+                </div>
               ) : (
                 <div
-                  className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg text-white"
+                  className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-full text-white"
                   style={{ backgroundColor: brandAccent }}
                 >
                   <Store className="h-4 w-4" />

@@ -127,55 +127,87 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenPlayer, onSignOut })
     }, 3600);
   }, []);
 
-  const loadData = useCallback(async () => {
-    try {
-      const [s, m, p, c, t, w] = await Promise.all([
-        storageService.getScreens(),
-        storageService.getMedia(),
-        storageService.getPlaylists(),
-        storageService.getConfig(),
-        storageService.getTicker(),
-        storageService.getWeather(),
-      ]);
+  const loadData = useCallback(
+    async (checkOnboarding = false) => {
+      try {
+        const [s, m, p, c, t, w] = await Promise.all([
+          storageService.getScreens(),
+          storageService.getMedia(),
+          storageService.getPlaylists(),
+          storageService.getConfig(),
+          storageService.getTicker(),
+          storageService.getWeather(),
+        ]);
 
-      setScreens(s);
-      setMediaList(m);
-      setPlaylists(p);
-      setConfig(c);
-      setTicker(t);
-      setWeather(w);
+        setScreens(s);
+        setMediaList(m);
+        setPlaylists(p);
+        setConfig(c);
+        setTicker(t);
+        setWeather(w);
 
-      const firstScreen = s[0];
-      if (firstScreen && (!selectedScreenSlug || !s.some((x) => x.slug === selectedScreenSlug))) {
-        setSelectedScreenSlug(firstScreen.slug);
-      } else if (!firstScreen && selectedScreenSlug) {
-        setSelectedScreenSlug('');
+        const firstScreen = s[0];
+        if (firstScreen && (!selectedScreenSlug || !s.some((x) => x.slug === selectedScreenSlug))) {
+          setSelectedScreenSlug(firstScreen.slug);
+        } else if (!firstScreen && selectedScreenSlug) {
+          setSelectedScreenSlug('');
+        }
+
+        if (checkOnboarding && m.length === 0 && !c?.brandProfile?.onboardingCompleted) {
+          setIsOnboardingOpen(true);
+        }
+      } catch (err) {
+        console.error('Erro ao ler dados:', err);
       }
-
-      if (m.length === 0 && s.length === 0 && !c?.brandProfile?.onboardingCompleted) {
-        setIsOnboardingOpen(true);
-      }
-    } catch (err) {
-      console.error('Erro ao ler dados:', err);
-    }
-  }, [selectedScreenSlug]);
+    },
+    [selectedScreenSlug]
+  );
 
   useEffect(() => {
-    loadData();
+    let mounted = true;
+    (async () => {
+      await loadData(false);
+      await storageService.syncFromSupabase(true);
+      if (!mounted) return;
+      const existingScreens = await storageService.getScreens();
+      if (existingScreens.length === 0) {
+        const { slug, pairingCode } = await storageService.generateUniqueShortSlug('tv');
+        const allPlaylists = await storageService.getPlaylists();
+        await storageService.saveScreen({
+          id: `scr_${Date.now()}`,
+          name: 'TV Principal',
+          location: 'Salão / Recepção',
+          slug,
+          pairingCode,
+          activePlaylistId: allPlaylists[0]?.id || 'pl_principal',
+          status: 'online',
+          resolution: '1080p',
+          orientation: 'landscape',
+          aspectRatio: '16:9',
+          lastPing: new Date().toISOString(),
+          pairedAt: new Date().toISOString(),
+        });
+      }
+      if (mounted) {
+        await loadData(true);
+      }
+    })();
 
     const currentUser = authService.getCurrentUser();
     const userName = currentUser?.name || 'Gestor';
     showToast(`Bem-vindo, ${userName}!`, 'info');
 
     const handleUpdate = () => {
-      loadData();
+      loadData(false);
     };
 
     window.addEventListener(DB_UPDATED_EVENT, handleUpdate);
     return () => {
+      mounted = false;
       window.removeEventListener(DB_UPDATED_EVENT, handleUpdate);
     };
-  }, [loadData, showToast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const activePlaylist = playlists[0] || {
     id: 'pl_principal',
@@ -411,7 +443,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenPlayer, onSignOut })
     defaultQrCodeUrl: '',
   };
 
-  const isSystemEmpty = mediaList.length === 0 && screens.length === 0;
+  const isSystemEmpty = mediaList.length === 0;
 
   const navItems: {
     id: TabType;

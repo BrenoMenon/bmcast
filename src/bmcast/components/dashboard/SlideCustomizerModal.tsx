@@ -494,16 +494,16 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
 
                 <input
                   type="url"
-                  value={imageUrl.startsWith('data:') ? '' : imageUrl}
+                  value={imageUrl.startsWith('data:') || imageUrl.startsWith('/api/uploads/') ? '' : imageUrl}
                   onChange={(e) => {
                     setImageUrl(e.target.value);
                     setPreviewImgError(false);
                     setErrorMessage(null);
                   }}
                   placeholder={
-                    imageUrl.startsWith('data:')
+                    imageUrl.startsWith('data:') || imageUrl.startsWith('/api/uploads/')
                       ? 'Arquivo enviado do dispositivo'
-                      : 'Ou cole o link direto da imagem...'
+                      : 'Ex: https://...'
                   }
                   className={inputCls}
                 />
@@ -623,13 +623,13 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
                 <span className="font-mono text-xs font-bold text-primary">{accentColor}</span>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2.5">
+              <div className="grid grid-cols-5 sm:flex sm:flex-wrap items-center gap-2.5 justify-items-center">
                 {COLOR_PRESETS.map((c) => (
                   <button
                     key={c.hex}
                     type="button"
                     onClick={() => setAccentColor(c.hex)}
-                    className={`flex h-8 w-8 items-center justify-center rounded-full transition cursor-pointer ${
+                    className={`flex h-9 w-9 sm:h-8 sm:w-8 aspect-square shrink-0 items-center justify-center rounded-full transition cursor-pointer ${
                       accentColor.toUpperCase() === c.hex.toUpperCase()
                         ? 'scale-110 ring-2 ring-primary ring-offset-2 ring-offset-card shadow'
                         : 'opacity-85 hover:scale-105 hover:opacity-100'
@@ -643,13 +643,13 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
                   </button>
                 ))}
 
-                <div className="flex items-center gap-1.5 border-l border-border pl-2.5">
-                  <label className="text-[11px] font-semibold text-muted-foreground">Livre:</label>
+                <div className="flex items-center justify-center sm:gap-1.5 sm:border-l sm:border-border sm:pl-2.5">
+                  <label className="hidden sm:inline text-[11px] font-semibold text-muted-foreground">Livre:</label>
                   <input
                     type="color"
                     value={accentColor}
                     onChange={(e) => setAccentColor(e.target.value)}
-                    className="brand-color-input h-8 w-8 rounded-full border border-border bg-transparent cursor-pointer"
+                    className="brand-color-input !h-9 !w-9 sm:!h-8 sm:!w-8 aspect-square shrink-0 rounded-full border border-border bg-transparent cursor-pointer"
                     title="Escolha qualquer cor personalizada"
                   />
                 </div>
@@ -820,7 +820,7 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
                         type="url"
                         value={qrCodeUrl}
                         onChange={(e) => setQrCodeUrl(e.target.value)}
-                        placeholder="https://wa.me/55..."
+                        placeholder="Ex: https://..."
                         className={`${inputCls} font-mono`}
                       />
                     </div>
@@ -1026,14 +1026,16 @@ export const SlideCustomizerModal: React.FC<SlideCustomizerModalProps> = ({
                       }}
                     >
                       {brandLogo ? (
-                        <img
-                          src={brandLogo}
-                          alt="Logo"
-                          className="h-5 w-5 rounded object-contain"
-                        />
+                        <div className="h-6 w-6 shrink-0 overflow-hidden rounded-full border border-white/20 bg-black">
+                          <img
+                            src={brandLogo}
+                            alt="Logo"
+                            className="block h-full w-full object-cover"
+                          />
+                        </div>
                       ) : (
                         <div
-                          className="flex h-5 w-5 items-center justify-center rounded-md text-white"
+                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-white"
                           style={{ backgroundColor: accentColor }}
                         >
                           <Store className="h-3 w-3" />

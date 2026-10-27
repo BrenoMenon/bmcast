@@ -25,6 +25,7 @@ export default function App() {
   });
 
   useEffect(() => {
+    document.title = 'BM CAST';
     const handleAuthChange = () => {
       setCurrentUser(authService.getCurrentUser());
     };

@@ -161,13 +161,15 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
             className="flex h-9 items-center gap-1.5 sm:gap-2 rounded-full border border-border bg-card p-1 pr-2 sm:pr-2.5 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer"
           >
             {brandProfile.logoUrl ? (
-              <img
-                src={brandProfile.logoUrl}
-                alt={displayName}
-                className="h-7 w-7 rounded-full object-cover ring-1 ring-border"
-              />
+              <span className="h-7 w-7 shrink-0 overflow-hidden rounded-full border border-border bg-muted">
+                <img
+                  src={brandProfile.logoUrl}
+                  alt={displayName}
+                  className="block h-full w-full object-cover"
+                />
+              </span>
             ) : (
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-[11px] font-bold text-primary">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[11px] font-bold text-primary">
                 {initials}
               </span>
             )}

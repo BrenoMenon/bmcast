@@ -21,11 +21,11 @@ export const storageService = {
   },
 
   async saveScreen(screen: Screen): Promise<void> {
-    db.saveScreen(screen);
+    await db.saveScreen(screen);
   },
 
   async deleteScreen(id: string): Promise<void> {
-    db.deleteScreen(id);
+    await db.deleteScreen(id);
   },
 
   async generateUniqueShortSlug(preferredBase = 'tv'): Promise<{ slug: string; pairingCode: string }> {
@@ -41,11 +41,11 @@ export const storageService = {
   },
 
   async saveMedia(item: MediaItem, addToActivePlaylist = false): Promise<void> {
-    db.saveMedia(item, addToActivePlaylist);
+    await db.saveMedia(item, addToActivePlaylist);
   },
 
   async deleteMedia(id: string): Promise<void> {
-    db.deleteMedia(id);
+    await db.deleteMedia(id);
   },
 
   async getPlaylists(): Promise<Playlist[]> {
@@ -57,15 +57,15 @@ export const storageService = {
   },
 
   async savePlaylist(playlist: Playlist): Promise<void> {
-    db.savePlaylist(playlist);
+    await db.savePlaylist(playlist);
   },
 
   async deletePlaylist(id: string): Promise<void> {
-    db.deletePlaylist(id);
+    await db.deletePlaylist(id);
   },
 
   async updatePlaylistItem(playlistId: string, item: PlaylistItem): Promise<void> {
-    db.updatePlaylistItem(playlistId, item);
+    await db.updatePlaylistItem(playlistId, item);
   },
 
   async duplicatePlaylistItem(playlistId: string, itemId: string): Promise<PlaylistItem | null> {
@@ -77,7 +77,7 @@ export const storageService = {
   },
 
   async saveConfig(cfg: Partial<SystemConfig>): Promise<void> {
-    db.saveConfig(cfg);
+    await db.saveConfig(cfg);
   },
 
   async getTicker(): Promise<TickerConfig> {
@@ -85,7 +85,7 @@ export const storageService = {
   },
 
   async saveTicker(ticker: TickerConfig): Promise<void> {
-    db.saveTicker(ticker);
+    await db.saveTicker(ticker);
   },
 
   async getWeather(): Promise<WeatherConfig> {
@@ -93,11 +93,11 @@ export const storageService = {
   },
 
   async saveWeather(weather: WeatherConfig): Promise<void> {
-    db.saveWeather(weather);
+    await db.saveWeather(weather);
   },
 
   async clearAll(): Promise<void> {
-    db.clearAll();
+    await db.clearAll();
   },
 
   async syncFromSupabase(pushLocalIfRemoteEmpty = true): Promise<{ success: boolean; message: string }> {

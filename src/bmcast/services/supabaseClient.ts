@@ -330,7 +330,7 @@ class SupabaseService {
     try {
       const ts = localStorage.getItem(`bmcast_schema_missing_${this.url}`);
       if (!ts) return false;
-      if (Date.now() - Number(ts) > 15 * 60 * 1000) {
+      if (Date.now() - Number(ts) > 30 * 1000) {
         localStorage.removeItem(`bmcast_schema_missing_${this.url}`);
         return false;
       }
@@ -355,21 +355,50 @@ class SupabaseService {
 
   async uploadAsset(file: File, folder = 'slides'): Promise<string | null> {
     const client = this.getClient();
-    if (!client || this.isSchemaKnownMissing()) return null;
-
-    try {
-      const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
-      const safeName = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-      const { error } = await client.storage.from('bmcast-media').upload(safeName, file, {
-        cacheControl: '3600',
-        upsert: false,
-      });
-      if (error) return null;
-      const { data } = client.storage.from('bmcast-media').getPublicUrl(safeName);
-      return data?.publicUrl || null;
-    } catch {
-      return null;
+    if (client && !this.isSchemaKnownMissing()) {
+      try {
+        const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
+        const safeName = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const { error } = await client.storage.from('bmcast-media').upload(safeName, file, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+        if (!error) {
+          const { data } = client.storage.from('bmcast-media').getPublicUrl(safeName);
+          if (data?.publicUrl) return data.publicUrl;
+        }
+      } catch {
+        /* fallback to backend /api/upload */
+      }
     }
+
+    if (typeof window !== 'undefined') {
+      try {
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ''));
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(file);
+        });
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dataUrl,
+            folder,
+            fileName: file.name || 'asset.png',
+          }),
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json?.url) return String(json.url);
+        }
+      } catch {
+        /* fallback to caller dataUrl */
+      }
+    }
+
+    return null;
   }
 
   async testConnection(testUrl?: string, testKey?: string): Promise<SupabaseTestResult> {
@@ -422,7 +451,7 @@ class SupabaseService {
 
     try {
       const tempClient = createClient(url, key);
-      const tablesToCheck = ['screens', 'media', 'playlists', 'system_config', 'ticker_config', 'weather_config'];
+      const tablesToCheck = ['app_users', 'screens', 'media', 'playlists', 'system_config', 'ticker_config', 'weather_config'];
       const missing: string[] = [];
 
       const firstCheck = await tempClient.from('screens').select('id').limit(1);

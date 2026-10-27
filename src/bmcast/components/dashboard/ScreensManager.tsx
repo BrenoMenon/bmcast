@@ -221,11 +221,11 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 pt-0.5">
+                <div className="flex items-center gap-1.5 sm:gap-2 pt-0.5">
                   <button
                     type="button"
                     onClick={() => handleCopyLink(sc.id, sc.slug)}
-                    className="flex flex-1 h-10 sm:h-9 items-center justify-center gap-1.5 rounded-xl border border-border bg-muted/60 px-3 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer"
+                    className="flex flex-1 h-10 sm:h-9 items-center justify-center gap-1.5 rounded-xl border border-border bg-muted/60 px-2.5 sm:px-3 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer whitespace-nowrap min-w-0"
                   >
                     {copiedId === sc.id ? (
                       <>
@@ -235,7 +235,7 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
                     ) : (
                       <>
                         <Copy className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span>Copiar Link</span>
+                        <span className="truncate">Copiar Link</span>
                       </>
                     )}
                   </button>
@@ -243,10 +243,10 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
                   <button
                     type="button"
                     onClick={() => onLaunchPlayer(sc.slug)}
-                    className="flex flex-1 h-10 sm:h-9 items-center justify-center gap-1.5 rounded-xl bg-primary px-3.5 text-xs font-bold text-primary-foreground shadow-xs hover:opacity-95 active:scale-[0.98] transition cursor-pointer"
+                    className="flex flex-1 h-10 sm:h-9 items-center justify-center gap-1.5 rounded-xl bg-primary px-2.5 sm:px-3.5 text-xs font-bold text-primary-foreground shadow-xs hover:opacity-95 active:scale-[0.98] transition cursor-pointer whitespace-nowrap min-w-0"
                   >
                     <Play className="h-3 w-3 fill-current shrink-0" />
-                    <span>Abrir TV</span>
+                    <span className="truncate">Abrir TV</span>
                   </button>
 
                   <button
@@ -314,7 +314,7 @@ export const ScreensManager: React.FC<ScreensManagerProps> = ({
                   Atalho Curto da TV (fácil de digitar no controle)
                 </label>
                 <div className="flex items-center rounded-2xl border border-border bg-muted/40 px-3.5 py-2.5 focus-within:border-primary focus-within:bg-card transition">
-                  <span className="truncate text-xs text-muted-foreground select-none mr-0.5">
+                  <span className="max-w-[52%] truncate text-xs text-muted-foreground select-none mr-0.5">
                     {hostDisplay}/
                   </span>
                   <input

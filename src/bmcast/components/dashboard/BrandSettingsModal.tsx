@@ -189,8 +189,8 @@ export const BrandSettingsModal: React.FC<BrandSettingsModalProps> = ({
                 <span>{logoUrl ? 'Substituir Imagem do Logo' : 'Fazer Upload do Logo'}</span>
               </button>
               {logoUrl && (
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border bg-muted p-1">
-                  <img src={logoUrl} alt="Logo" className="max-h-full max-w-full object-contain" />
+                <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full border border-border bg-muted shadow-xs">
+                  <img src={logoUrl} alt="Logo" className="block h-full w-full object-cover" />
                 </div>
               )}
             </div>
@@ -288,7 +288,7 @@ export const BrandSettingsModal: React.FC<BrandSettingsModalProps> = ({
               type="text"
               value={defaultQrCodeUrl}
               onChange={(e) => setDefaultQrCodeUrl(e.target.value)}
-              placeholder="https://wa.me/5511... ou https://meucardapio.com"
+              placeholder="Ex: https://..."
               className={`${inputCls} font-mono`}
             />
           </div>

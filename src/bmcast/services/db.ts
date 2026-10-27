@@ -89,6 +89,15 @@ function createDefaultWeather(): WeatherConfig {
   };
 }
 
+function safeSetLocalStorage(key: string, value: string) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(key, value);
+  } catch (err) {
+    console.warn(`Local storage quota warning (${key}):`, err);
+  }
+}
+
 function mapScreenRow(s: any): Screen {
   return {
     id: s.id,
@@ -151,6 +160,7 @@ class ResilientDatabase {
   private broadcastChannel: BroadcastChannel | null = null;
   private realtimeChannel: any = null;
   private isSupabaseSyncing = false;
+  private isServerSyncing = false;
   private lastSyncTime: string | null = null;
   private activeScope: string = 'guest';
 
@@ -274,16 +284,111 @@ class ResilientDatabase {
       this.notifyListeners();
       return;
     }
+    safeSetLocalStorage(this.storageKey('screens'), JSON.stringify(this.screens));
+    safeSetLocalStorage(this.storageKey('media'), JSON.stringify(this.media));
+    safeSetLocalStorage(this.storageKey('playlists'), JSON.stringify(this.playlists));
+    safeSetLocalStorage(this.storageKey('config'), JSON.stringify(this.config));
+    safeSetLocalStorage(this.storageKey('ticker'), JSON.stringify(this.ticker));
+    safeSetLocalStorage(this.storageKey('weather'), JSON.stringify(this.weather));
+    this.notifyListeners();
+  }
+
+  async pushWorkspaceToServer(scope = this.resolveUserScope()): Promise<boolean> {
+    if (typeof window === 'undefined' || !scope || scope === 'guest') return false;
     try {
-      localStorage.setItem(this.storageKey('screens'), JSON.stringify(this.screens));
-      localStorage.setItem(this.storageKey('media'), JSON.stringify(this.media));
-      localStorage.setItem(this.storageKey('playlists'), JSON.stringify(this.playlists));
-      localStorage.setItem(this.storageKey('config'), JSON.stringify(this.config));
-      localStorage.setItem(this.storageKey('ticker'), JSON.stringify(this.ticker));
-      localStorage.setItem(this.storageKey('weather'), JSON.stringify(this.weather));
-      this.notifyListeners();
-    } catch (e) {
-      console.error('Erro ao gravar dados no storage:', e);
+      const res = await fetch(`/api/workspace/${encodeURIComponent(scope)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          screens: this.screens,
+          media: this.media,
+          playlists: this.playlists,
+          config: this.config,
+          ticker: this.ticker,
+          weather: this.weather,
+        }),
+      });
+      if (res.ok) {
+        this.lastSyncTime = new Date().toISOString();
+        safeSetLocalStorage(this.storageKey('last_sync', scope), this.lastSyncTime);
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  async syncFromServer(pushLocalIfRemoteEmpty = true): Promise<boolean> {
+    if (typeof window === 'undefined') return false;
+    const scope = this.resolveUserScope();
+    if (!scope || scope === 'guest' || this.isServerSyncing) return false;
+
+    this.isServerSyncing = true;
+    try {
+      const res = await fetch(`/api/workspace/${encodeURIComponent(scope)}`);
+      if (!res.ok) return false;
+      const json = await res.json();
+
+      const localHasContent =
+        this.screens.length > 0 ||
+        this.media.length > 0 ||
+        Boolean(this.config?.brandProfile?.name) ||
+        Boolean(this.config?.brandProfile?.onboardingCompleted);
+
+      if (!json?.exists || !json?.workspace) {
+        if (pushLocalIfRemoteEmpty && localHasContent) {
+          await this.pushWorkspaceToServer(scope);
+        }
+        return true;
+      }
+
+      const ws = json.workspace;
+      const remoteScreens: Screen[] = Array.isArray(ws.screens) ? ws.screens : [];
+      const remoteMedia: MediaItem[] = (Array.isArray(ws.media) ? ws.media : []).filter(
+        (m: any) => !String(m?.id || '').includes('demo-slide') && m?.url !== '/demo-burger.jpg' && m?.url !== '/demo-pizza.jpg'
+      );
+      const remotePlaylists: Playlist[] = Array.isArray(ws.playlists) ? ws.playlists : [];
+      const remoteHasContent =
+        remoteScreens.length > 0 ||
+        remoteMedia.length > 0 ||
+        Boolean(ws.config?.brandProfile?.name) ||
+        Boolean(ws.config?.brandProfile?.onboardingCompleted);
+
+      if (!remoteHasContent && pushLocalIfRemoteEmpty && localHasContent) {
+        await this.pushWorkspaceToServer(scope);
+        return true;
+      }
+
+      this.screens = remoteScreens;
+      this.media = remoteMedia;
+      this.playlists = remotePlaylists;
+      if (ws.config) {
+        this.config = {
+          ...createDefaultConfig(),
+          ...ws.config,
+          brandProfile: {
+            ...createDefaultBrandProfile(),
+            ...(ws.config.brandProfile || {}),
+          },
+        };
+      }
+      if (ws.ticker) {
+        this.ticker = { ...createDefaultTicker(), ...ws.ticker };
+      }
+      if (ws.weather) {
+        this.weather = { ...createDefaultWeather(), ...ws.weather };
+      }
+
+      const syncStamp = String(ws.updatedAt || new Date().toISOString());
+      this.lastSyncTime = syncStamp;
+      safeSetLocalStorage(this.storageKey('last_sync', scope), syncStamp);
+      this.saveToStorage();
+      return true;
+    } catch {
+      return false;
+    } finally {
+      this.isServerSyncing = false;
     }
   }
 
@@ -295,8 +400,11 @@ class ResilientDatabase {
       this.activeScope = nextScope;
       this.loadFromStorage();
       this.notifyListeners(false);
-      if (nextScope !== 'guest' && !supabaseService.isSchemaKnownMissing()) {
-        this.syncFromSupabase(true);
+      if (nextScope !== 'guest') {
+        this.syncFromServer(true);
+        if (!supabaseService.isSchemaKnownMissing()) {
+          this.syncFromSupabase(true);
+        }
       }
     });
 
@@ -308,6 +416,9 @@ class ResilientDatabase {
     });
 
     setTimeout(() => {
+      if (this.activeScope !== 'guest') {
+        this.syncFromServer(true);
+      }
       if (!supabaseService.isSchemaKnownMissing()) {
         this.cleanupLegacyDemoRows();
         if (this.activeScope !== 'guest') {
@@ -315,7 +426,18 @@ class ResilientDatabase {
         }
         this.setupRealtimeSubscription();
       }
-    }, 650);
+    }, 300);
+
+    // Keep PC and Mobile ("celular") synchronized automatically while visible
+    setInterval(() => {
+      if (
+        typeof document !== 'undefined' &&
+        document.visibilityState === 'visible' &&
+        this.resolveUserScope() !== 'guest'
+      ) {
+        this.syncFromServer(false);
+      }
+    }, 12000);
   }
 
   private async cleanupLegacyDemoRows() {
@@ -359,17 +481,20 @@ class ResilientDatabase {
   }
 
   /**
-   * Sincroniza apenas os dados pertencentes à conta logada atual
+   * Sincroniza os dados pertencentes à conta logada atual
    */
   async syncFromSupabase(pushLocalIfRemoteEmpty = true): Promise<{ success: boolean; message: string }> {
-    const client = supabaseService.getClient();
-    if (!client) {
-      return { success: false, message: 'Cliente Supabase não configurado.' };
-    }
-
     const scope = this.resolveUserScope();
     if (scope === 'guest') {
       return { success: true, message: 'Sessão visitante.' };
+    }
+
+    // Always synchronize with backend server first
+    await this.syncFromServer(pushLocalIfRemoteEmpty);
+
+    const client = supabaseService.getClient();
+    if (!client) {
+      return { success: true, message: 'Dados sincronizados.' };
     }
 
     if (this.isSupabaseSyncing) {
@@ -394,18 +519,16 @@ class ResilientDatabase {
         ) {
           supabaseService.markSchemaStatus(false);
           return {
-            success: false,
-            message: 'Tabelas do banco ainda não inicializadas.',
+            success: true,
+            message: 'Dados sincronizados no servidor.',
           };
         }
       } else {
         supabaseService.markSchemaStatus(true);
       }
 
-      if (!screensErr && Array.isArray(screensData)) {
-        if (screensData.length > 0 || !pushLocalIfRemoteEmpty) {
-          this.screens = screensData.map(mapScreenRow);
-        }
+      if (!screensErr && Array.isArray(screensData) && screensData.length > 0) {
+        this.screens = screensData.map(mapScreenRow);
       }
 
       const { data: mediaData, error: mediaErr } = await client
@@ -413,10 +536,8 @@ class ResilientDatabase {
         .select('*')
         .like('id', prefixPattern);
 
-      if (!mediaErr && Array.isArray(mediaData)) {
-        if (mediaData.length > 0 || !pushLocalIfRemoteEmpty) {
-          this.media = mediaData.map(mapMediaRow);
-        }
+      if (!mediaErr && Array.isArray(mediaData) && mediaData.length > 0) {
+        this.media = mediaData.map(mapMediaRow);
       }
 
       const { data: plData, error: plErr } = await client
@@ -424,10 +545,8 @@ class ResilientDatabase {
         .select('*')
         .like('id', prefixPattern);
 
-      if (!plErr && Array.isArray(plData)) {
-        if (plData.length > 0 || !pushLocalIfRemoteEmpty) {
-          this.playlists = plData.map(mapPlaylistRow);
-        }
+      if (!plErr && Array.isArray(plData) && plData.length > 0) {
+        this.playlists = plData.map(mapPlaylistRow);
       }
 
       const { data: cfgData, error: cfgErr } = await client
@@ -504,10 +623,9 @@ class ResilientDatabase {
       }
 
       this.lastSyncTime = new Date().toISOString();
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(this.storageKey('last_sync', scope), this.lastSyncTime);
-      }
+      safeSetLocalStorage(this.storageKey('last_sync', scope), this.lastSyncTime);
       this.saveToStorage();
+      await this.pushWorkspaceToServer(scope);
 
       return {
         success: true,
@@ -526,13 +644,50 @@ class ResilientDatabase {
 
   /**
    * Carrega o pacote público de uma TV específica pelo link curto (/tv1) ou código numérico (/1024),
-   * mesmo quando a Smart TV não está logada em nenhuma conta!
+   * mesmo quando a Smart TV ou celular não está logado em nenhuma conta!
    */
   async getPublicPlayerBundle(slugOrCode: string): Promise<PublicPlayerBundle> {
     const cleanTarget = decodeURIComponent(slugOrCode).trim().toLowerCase().replace(/^\/+/, '');
-    const client = this.getActiveCloudClient();
 
-    // 1. Tenta buscar na nuvem para funcionar em qualquer Smart TV externa
+    // 1. Primary cross-device Server Player Resolver (/api/player/:slugOrCode)
+    if (typeof window !== 'undefined' && cleanTarget) {
+      try {
+        const res = await fetch(`/api/player/${encodeURIComponent(cleanTarget)}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json?.found && json?.bundle) {
+            const b = json.bundle;
+            return {
+              screen: b.screen || null,
+              playlist: b.playlist || null,
+              mediaList: (Array.isArray(b.mediaList) ? b.mediaList : []).filter(
+                (m: any) =>
+                  !String(m?.id || '').includes('demo-slide') &&
+                  m?.url !== '/demo-burger.jpg' &&
+                  m?.url !== '/demo-pizza.jpg'
+              ),
+              ticker: b.ticker ? { ...createDefaultTicker(), ...b.ticker } : createDefaultTicker(),
+              weather: b.weather ? { ...createDefaultWeather(), ...b.weather } : this.weather,
+              config: b.config
+                ? {
+                    ...createDefaultConfig(),
+                    ...b.config,
+                    brandProfile: {
+                      ...createDefaultBrandProfile(),
+                      ...(b.config.brandProfile || {}),
+                    },
+                  }
+                : this.config,
+            };
+          }
+        }
+      } catch {
+        /* fallback below */
+      }
+    }
+
+    // 2. Secondary Cloud Lookup (Supabase if tables exist)
+    const client = this.getActiveCloudClient();
     if (client && cleanTarget) {
       try {
         const { data: allScreens, error: scrErr } = await client.from('screens').select('*');
@@ -570,11 +725,16 @@ class ResilientDatabase {
             const mediaList = Array.isArray(mediaRes.data)
               ? mediaRes.data
                   .map(mapMediaRow)
-                  .filter((m) => !m.id.includes('demo-slide') && m.url !== '/demo-burger.jpg' && m.url !== '/demo-pizza.jpg')
+                  .filter(
+                    (m) =>
+                      !m.id.includes('demo-slide') &&
+                      m.url !== '/demo-burger.jpg' &&
+                      m.url !== '/demo-pizza.jpg'
+                  )
               : [];
             const playlists = Array.isArray(plRes.data) ? plRes.data.map(mapPlaylistRow) : [];
 
-            let resolvedPlaylist =
+            const resolvedPlaylist =
               playlists.find((p) => p.id === screen.activePlaylistId) ||
               playlists.find((p) => p.items && p.items.length > 0) ||
               playlists[0] ||
@@ -634,7 +794,7 @@ class ResilientDatabase {
       }
     }
 
-    // 2. Fallback: busca na sessão local ativa ou em qualquer conta salva neste navegador
+    // 3. Fallback local: busca na sessão local ativa ou em qualquer conta salva neste navegador
     const matchScreen = (list: Screen[]) =>
       list.find((s) => {
         const sSlug = s.slug.trim().toLowerCase();
@@ -662,9 +822,12 @@ class ResilientDatabase {
               foundLocal = m;
               localMedia = JSON.parse(localStorage.getItem(`${scopePrefix}_media`) || '[]');
               localPlaylists = JSON.parse(localStorage.getItem(`${scopePrefix}_playlists`) || '[]');
-              localTicker = JSON.parse(localStorage.getItem(`${scopePrefix}_ticker`) || 'null') || createDefaultTicker();
-              localWeather = JSON.parse(localStorage.getItem(`${scopePrefix}_weather`) || 'null') || createDefaultWeather();
-              localConfig = JSON.parse(localStorage.getItem(`${scopePrefix}_config`) || 'null') || createDefaultConfig();
+              localTicker =
+                JSON.parse(localStorage.getItem(`${scopePrefix}_ticker`) || 'null') || createDefaultTicker();
+              localWeather =
+                JSON.parse(localStorage.getItem(`${scopePrefix}_weather`) || 'null') || createDefaultWeather();
+              localConfig =
+                JSON.parse(localStorage.getItem(`${scopePrefix}_config`) || 'null') || createDefaultConfig();
               break;
             }
           } catch {
@@ -704,6 +867,23 @@ class ResilientDatabase {
     const existingSlugs = new Set(this.screens.map((s) => s.slug.toLowerCase()));
     const existingCodes = new Set(this.screens.map((s) => s.pairingCode));
 
+    if (typeof window !== 'undefined') {
+      try {
+        const res = await fetch('/api/screens/taken');
+        if (res.ok) {
+          const taken = await res.json();
+          if (Array.isArray(taken?.slugs)) {
+            taken.slugs.forEach((sl: string) => existingSlugs.add(String(sl).toLowerCase()));
+          }
+          if (Array.isArray(taken?.codes)) {
+            taken.codes.forEach((cd: string) => existingCodes.add(String(cd)));
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
     const client = this.getActiveCloudClient();
     if (client) {
       try {
@@ -735,10 +915,16 @@ class ResilientDatabase {
   }
 
   async pushAllToSupabase(): Promise<{ success: boolean; message: string }> {
-    const client = supabaseService.getClient();
     const scope = this.resolveUserScope();
-    if (!client || scope === 'guest') {
+    if (scope === 'guest') {
       return { success: false, message: 'Sessão não autenticada.' };
+    }
+
+    await this.pushWorkspaceToServer(scope);
+
+    const client = supabaseService.getClient();
+    if (!client) {
+      return { success: true, message: 'Dados salvos!' };
     }
 
     try {
@@ -752,8 +938,8 @@ class ResilientDatabase {
       ) {
         supabaseService.markSchemaStatus(false);
         return {
-          success: false,
-          message: 'Tabelas pendentes no banco.',
+          success: true,
+          message: 'Dados salvos no servidor!',
         };
       }
       supabaseService.markSchemaStatus(true);
@@ -852,9 +1038,7 @@ class ResilientDatabase {
       });
 
       this.lastSyncTime = new Date().toISOString();
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(this.storageKey('last_sync', scope), this.lastSyncTime);
-      }
+      safeSetLocalStorage(this.storageKey('last_sync', scope), this.lastSyncTime);
 
       return {
         success: true,
@@ -899,6 +1083,7 @@ class ResilientDatabase {
           this.weather = live;
           if (this.activeScope !== 'guest') {
             this.saveToStorage();
+            this.pushWorkspaceToServer();
           }
         } catch (e) {
           console.warn('Erro ao renovar clima periódico:', e);
@@ -919,7 +1104,7 @@ class ResilientDatabase {
     );
   }
 
-  saveScreen(screen: Screen): void {
+  async saveScreen(screen: Screen): Promise<void> {
     const scopedId = this.ensureScopedId(screen.id);
     const scopedPlaylistId = screen.activePlaylistId ? this.ensureScopedId(screen.activePlaylistId) : '';
     const updated: Screen = {
@@ -936,6 +1121,7 @@ class ResilientDatabase {
       this.screens.push(updated);
     }
     this.saveToStorage();
+    await this.pushWorkspaceToServer();
 
     const client = this.getActiveCloudClient();
     if (client && this.activeScope !== 'guest') {
@@ -966,10 +1152,11 @@ class ResilientDatabase {
     }
   }
 
-  deleteScreen(id: string): void {
+  async deleteScreen(id: string): Promise<void> {
     const scopedId = this.ensureScopedId(id);
     this.screens = this.screens.filter((s) => s.id !== id && s.id !== scopedId);
     this.saveToStorage();
+    await this.pushWorkspaceToServer();
 
     const client = this.getActiveCloudClient();
     if (client) {
@@ -986,7 +1173,7 @@ class ResilientDatabase {
     return [...this.media];
   }
 
-  saveMedia(item: MediaItem, addToActivePlaylist = false): void {
+  async saveMedia(item: MediaItem, addToActivePlaylist = false): Promise<void> {
     const scopedId = this.ensureScopedId(item.id);
     const scopedItem: MediaItem = { ...item, id: scopedId };
 
@@ -1041,10 +1228,11 @@ class ResilientDatabase {
       }
 
       activePlaylist.updatedAt = new Date().toISOString();
-      this.savePlaylist(activePlaylist);
+      await this.savePlaylist(activePlaylist);
     }
 
     this.saveToStorage();
+    await this.pushWorkspaceToServer();
 
     const client = this.getActiveCloudClient();
     if (client && this.activeScope !== 'guest') {
@@ -1070,14 +1258,15 @@ class ResilientDatabase {
     }
   }
 
-  deleteMedia(id: string): void {
+  async deleteMedia(id: string): Promise<void> {
     const scopedId = this.ensureScopedId(id);
     this.media = this.media.filter((m) => m.id !== id && m.id !== scopedId);
-    this.playlists.forEach((p) => {
+    for (const p of this.playlists) {
       p.items = p.items.filter((item) => item.mediaId !== id && item.mediaId !== scopedId);
-      this.savePlaylist(p);
-    });
+      p.updatedAt = new Date().toISOString();
+    }
     this.saveToStorage();
+    await this.pushWorkspaceToServer();
 
     const client = this.getActiveCloudClient();
     if (client) {
@@ -1099,7 +1288,7 @@ class ResilientDatabase {
     return this.playlists.find((p) => p.id === id || p.id === scopedId);
   }
 
-  savePlaylist(playlist: Playlist): void {
+  async savePlaylist(playlist: Playlist): Promise<void> {
     const scopedId = this.ensureScopedId(playlist.id);
     const updated: Playlist = {
       ...playlist,
@@ -1118,6 +1307,7 @@ class ResilientDatabase {
       this.playlists.push(updated);
     }
     this.saveToStorage();
+    await this.pushWorkspaceToServer();
 
     const client = this.getActiveCloudClient();
     if (client && this.activeScope !== 'guest') {
@@ -1138,10 +1328,11 @@ class ResilientDatabase {
     }
   }
 
-  deletePlaylist(id: string): void {
+  async deletePlaylist(id: string): Promise<void> {
     const scopedId = this.ensureScopedId(id);
     this.playlists = this.playlists.filter((p) => p.id !== id && p.id !== scopedId);
     this.saveToStorage();
+    await this.pushWorkspaceToServer();
 
     const client = this.getActiveCloudClient();
     if (client) {
@@ -1153,18 +1344,18 @@ class ResilientDatabase {
     }
   }
 
-  updatePlaylistItem(playlistId: string, item: PlaylistItem): void {
+  async updatePlaylistItem(playlistId: string, item: PlaylistItem): Promise<void> {
     const playlist = this.getPlaylist(playlistId);
     if (!playlist) return;
     const idx = playlist.items.findIndex((i) => i.id === item.id);
     if (idx >= 0) {
       playlist.items[idx] = item;
       playlist.updatedAt = new Date().toISOString();
-      this.savePlaylist(playlist);
+      await this.savePlaylist(playlist);
     }
   }
 
-  duplicatePlaylistItem(playlistId: string, itemId: string): PlaylistItem | null {
+  async duplicatePlaylistItem(playlistId: string, itemId: string): Promise<PlaylistItem | null> {
     const playlist = this.getPlaylist(playlistId);
     if (!playlist) return null;
     const item = playlist.items.find((i) => i.id === itemId);
@@ -1178,7 +1369,7 @@ class ResilientDatabase {
     };
     playlist.items.push(duplicated);
     playlist.updatedAt = new Date().toISOString();
-    this.savePlaylist(playlist);
+    await this.savePlaylist(playlist);
     return duplicated;
   }
 
@@ -1186,9 +1377,10 @@ class ResilientDatabase {
     return { ...this.config };
   }
 
-  saveConfig(cfg: Partial<SystemConfig>): void {
+  async saveConfig(cfg: Partial<SystemConfig>): Promise<void> {
     this.config = { ...this.config, ...cfg };
     this.saveToStorage();
+    await this.pushWorkspaceToServer();
 
     const client = this.getActiveCloudClient();
     if (client && this.activeScope !== 'guest') {
@@ -1212,9 +1404,10 @@ class ResilientDatabase {
     return { ...this.ticker };
   }
 
-  saveTicker(ticker: TickerConfig): void {
+  async saveTicker(ticker: TickerConfig): Promise<void> {
     this.ticker = { ...ticker };
     this.saveToStorage();
+    await this.pushWorkspaceToServer();
 
     const client = this.getActiveCloudClient();
     if (client && this.activeScope !== 'guest') {
@@ -1237,9 +1430,10 @@ class ResilientDatabase {
     return { ...this.weather };
   }
 
-  saveWeather(weather: WeatherConfig): void {
+  async saveWeather(weather: WeatherConfig): Promise<void> {
     this.weather = { ...weather };
     this.saveToStorage();
+    await this.pushWorkspaceToServer();
 
     const client = this.getActiveCloudClient();
     if (client && this.activeScope !== 'guest') {
@@ -1270,7 +1464,7 @@ class ResilientDatabase {
     return this.lastSyncTime;
   }
 
-  clearAll(): void {
+  async clearAll(): Promise<void> {
     const oldScreenIds = this.screens.map((s) => s.id);
     const oldMediaIds = this.media.map((m) => m.id);
     const oldPlaylistIds = this.playlists.map((p) => p.id);
@@ -1279,6 +1473,7 @@ class ResilientDatabase {
     this.media = [];
     this.playlists = [];
     this.saveToStorage();
+    await this.pushWorkspaceToServer();
 
     const client = this.getActiveCloudClient();
     if (client && this.activeScope !== 'guest') {

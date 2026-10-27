@@ -69,14 +69,49 @@ class AuthenticationService {
       this.currentSession = null;
     }
 
-    setTimeout(() => this.syncUsersFromSupabase(), 900);
+    setTimeout(() => {
+      this.syncLocalUsersToServer();
+      this.syncUsersFromSupabase();
+    }, 350);
+
     window.addEventListener(SUPABASE_CHANGED_EVENT, () => {
       this.syncUsersFromSupabase();
     });
   }
 
   private saveUsers() {
-    if (isBrowser()) localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(this.users));
+    if (!isBrowser()) return;
+    try {
+      localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(this.users));
+    } catch {
+      /* ignore quota */
+    }
+  }
+
+  private upsertLocalAccountRecord(acc: UserAccount) {
+    if (!acc || !acc.email) return;
+    const email = normEmail(acc.email);
+    const normalized: UserAccount = { ...acc, email };
+    const idx = this.users.findIndex((u) => normEmail(u.email) === email || u.id === normalized.id);
+    if (idx >= 0) {
+      this.users[idx] = normalized;
+    } else {
+      this.users.push(normalized);
+    }
+    this.saveUsers();
+  }
+
+  async syncLocalUsersToServer() {
+    if (!isBrowser() || this.users.length === 0) return;
+    try {
+      await fetch('/api/auth/sync-users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ users: this.users }),
+      });
+    } catch {
+      /* server unreachable fallback */
+    }
   }
 
   private async upsertUserToSupabase(u: UserAccount) {
@@ -118,7 +153,10 @@ class AuthenticationService {
           changed = true;
         }
       }
-      if (changed) this.saveUsers();
+      if (changed) {
+        this.saveUsers();
+        this.syncLocalUsersToServer();
+      }
     } catch {
       /* ignore */
     }
@@ -136,20 +174,24 @@ class AuthenticationService {
         .maybeSingle();
       if (error || !data) return null;
       const acc = mapRowToAccount(data);
-      const idx = this.users.findIndex((u) => u.email === email);
-      if (idx >= 0) this.users[idx] = acc;
-      else this.users.push(acc);
-      this.saveUsers();
+      this.upsertLocalAccountRecord(acc);
       return acc;
     } catch {
       return null;
     }
   }
 
-  private startSession(u: UserAccount) {
-    this.currentSession = { user: { id: u.id, name: u.name, email: u.email }, token: randomId(24) };
+  private startSession(u: { id: string; name: string; email: string }) {
+    this.currentSession = {
+      user: { id: u.id, name: u.name, email: normEmail(u.email) },
+      token: randomId(24),
+    };
     if (isBrowser()) {
-      localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(this.currentSession));
+      try {
+        localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(this.currentSession));
+      } catch {
+        /* ignore */
+      }
       window.dispatchEvent(new CustomEvent('bmcast_auth_changed'));
     }
     return this.currentSession.user;
@@ -177,13 +219,45 @@ class AuthenticationService {
       return { success: false, error: 'Escreva uma pergunta de recuperação com pelo menos 5 caracteres.' };
     if (key.length < 2) return { success: false, error: 'Escreva a resposta da pergunta de recuperação.' };
 
+    const candidateId = `usr_${randomId(8)}`;
+
+    // 1. Primary cross-device server signup
+    try {
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: candidateId,
+          name: p.name.trim() || (email.split('@')[0] ?? email),
+          email,
+          password,
+          recoveryKey: key,
+          recoveryQuestion: question || 'Qual o nome do meu pet?',
+        }),
+      });
+      const json = await res.json();
+      if (res.ok && json?.success && json?.user) {
+        if (json.accountRecord) {
+          this.upsertLocalAccountRecord(json.accountRecord);
+          this.upsertUserToSupabase(json.accountRecord);
+        }
+        return { success: true, user: this.startSession(json.user) };
+      }
+      if (json?.error) {
+        return { success: false, error: String(json.error) };
+      }
+    } catch {
+      /* fallback below if offline */
+    }
+
+    // 2. Fallback local + Supabase
     const existingRemote = await this.fetchRemoteUserByEmail(email);
     if (existingRemote || this.users.some((u) => u.email === email))
       return { success: false, error: 'Já existe uma conta cadastrada com este e-mail.' };
 
     const salt = randomId(12);
     const user: UserAccount = {
-      id: `usr_${randomId(8)}`,
+      id: candidateId,
       name: p.name.trim() || (email.split('@')[0] ?? email),
       email,
       salt,
@@ -192,27 +266,80 @@ class AuthenticationService {
       ...(question ? { recoveryQuestion: question.slice(0, 200) } : {}),
       createdAt: new Date().toISOString(),
     };
-    this.users.push(user);
-    this.saveUsers();
+    this.upsertLocalAccountRecord(user);
     await this.upsertUserToSupabase(user);
     return { success: true, user: this.startSession(user) };
   }
 
   async signIn(emailRaw: string, password: string): Promise<Result> {
     const email = normEmail(emailRaw);
-    let user = this.users.find((u) => u.email === email) || null;
+    if (!email || !password) return { success: false, error: 'Informe seu e-mail e senha.' };
+
+    // 1. Primary cross-device server sign-in
+    try {
+      const res = await fetch('/api/auth/signin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json?.success && json?.user) {
+          if (json.accountRecord) {
+            this.upsertLocalAccountRecord(json.accountRecord);
+          }
+          return { success: true, user: this.startSession(json.user) };
+        }
+      }
+    } catch {
+      /* fallback below */
+    }
+
+    // 2. Check local browser cache (e.g. account created prior to server DB) and sync it up!
+    let user = this.users.find((u) => normEmail(u.email) === email) || null;
     if (!user) {
       user = await this.fetchRemoteUserByEmail(email);
     }
-    if (!user || (await sha256(user.salt + password)) !== user.passwordHash)
+    if (!user || (await sha256(user.salt + password)) !== user.passwordHash) {
       return { success: false, error: 'E-mail ou senha incorretos.' };
+    }
+
+    await this.syncLocalUsersToServer();
     return { success: true, user: this.startSession(user) };
   }
 
   async recoverPassword(p: { email: string; recoveryKey: string; newPassword: string }): Promise<Result> {
     const email = normEmail(p.email);
     if (p.newPassword.length < 6) return { success: false, error: 'A nova senha deve ter no mínimo 6 caracteres.' };
-    let user = this.users.find((u) => u.email === email) || null;
+
+    // 1. Primary cross-device server recovery
+    try {
+      await this.syncLocalUsersToServer();
+      const res = await fetch('/api/auth/recover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          recoveryKey: p.recoveryKey,
+          newPassword: p.newPassword,
+        }),
+      });
+      const json = await res.json();
+      if (res.ok && json?.success && json?.user) {
+        if (json.accountRecord) {
+          this.upsertLocalAccountRecord(json.accountRecord);
+          this.upsertUserToSupabase(json.accountRecord);
+        }
+        return { success: true, user: this.startSession(json.user) };
+      }
+      if (res.status === 401 && json?.error) {
+        return { success: false, error: String(json.error) };
+      }
+    } catch {
+      /* fallback below */
+    }
+
+    let user = this.users.find((u) => normEmail(u.email) === email) || null;
     if (!user) {
       user = await this.fetchRemoteUserByEmail(email);
     }
@@ -220,22 +347,43 @@ class AuthenticationService {
       return { success: false, error: 'Resposta de recuperação incorreta.' };
     user.passwordHash = await sha256(user.salt + p.newPassword);
     this.saveUsers();
+    await this.syncLocalUsersToServer();
     await this.upsertUserToSupabase(user);
     return { success: true, user: this.startSession(user) };
   }
 
   getRecoveryQuestion(emailRaw: string): string | null {
-    const user = this.users.find((u) => u.email === normEmail(emailRaw));
+    const user = this.users.find((u) => normEmail(u.email) === normEmail(emailRaw));
     if (!user) return null;
-    return user.recoveryQuestion || 'Qual é a sua chave de recuperação?';
+    return user.recoveryQuestion || 'Qual o nome do meu pet?';
   }
 
   async findRecoveryQuestionAsync(emailRaw: string): Promise<string | null> {
-    const localQ = this.getRecoveryQuestion(emailRaw);
+    const email = normEmail(emailRaw);
+    if (!email) return null;
+
+    try {
+      await this.syncLocalUsersToServer();
+      const res = await fetch('/api/auth/recovery-question', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json?.found && json?.question) {
+          return String(json.question);
+        }
+      }
+    } catch {
+      /* fallback below */
+    }
+
+    const localQ = this.getRecoveryQuestion(email);
     if (localQ) return localQ;
-    const remote = await this.fetchRemoteUserByEmail(normEmail(emailRaw));
+    const remote = await this.fetchRemoteUserByEmail(email);
     if (!remote) return null;
-    return remote.recoveryQuestion || 'Qual é a sua chave de recuperação?';
+    return remote.recoveryQuestion || 'Qual o nome do meu pet?';
   }
 
   private async verifyCurrent(password: string): Promise<UserAccount | null> {
@@ -247,10 +395,34 @@ class AuthenticationService {
 
   async changePassword(currentPassword: string, newPassword: string): Promise<Result> {
     if (newPassword.length < 6) return { success: false, error: 'A nova senha deve ter no mínimo 6 caracteres.' };
+    const userId = this.currentSession?.user.id;
+    if (!userId) return { success: false, error: 'Sessão inválida.' };
+
+    try {
+      await this.syncLocalUsersToServer();
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, currentPassword, newPassword }),
+      });
+      const json = await res.json();
+      if (res.ok && json?.success) {
+        if (json.accountRecord) {
+          this.upsertLocalAccountRecord(json.accountRecord);
+          this.upsertUserToSupabase(json.accountRecord);
+        }
+        return { success: true };
+      }
+      if (json?.error) return { success: false, error: String(json.error) };
+    } catch {
+      /* fallback below */
+    }
+
     const user = await this.verifyCurrent(currentPassword);
     if (!user) return { success: false, error: 'Senha atual incorreta.' };
     user.passwordHash = await sha256(user.salt + newPassword);
     this.saveUsers();
+    await this.syncLocalUsersToServer();
     await this.upsertUserToSupabase(user);
     return { success: true };
   }
@@ -260,16 +432,70 @@ class AuthenticationService {
     const a = normKey(answer);
     if (q.length < 5) return { success: false, error: 'Escreva uma pergunta com pelo menos 5 caracteres.' };
     if (a.length < 2) return { success: false, error: 'Escreva a resposta da pergunta.' };
+    const userId = this.currentSession?.user.id;
+    if (!userId) return { success: false, error: 'Sessão inválida.' };
+
+    try {
+      await this.syncLocalUsersToServer();
+      const res = await fetch('/api/auth/change-recovery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, currentPassword, question: q, answer: a }),
+      });
+      const json = await res.json();
+      if (res.ok && json?.success) {
+        if (json.accountRecord) {
+          this.upsertLocalAccountRecord(json.accountRecord);
+          this.upsertUserToSupabase(json.accountRecord);
+        }
+        return { success: true };
+      }
+      if (json?.error) return { success: false, error: String(json.error) };
+    } catch {
+      /* fallback below */
+    }
+
     const user = await this.verifyCurrent(currentPassword);
     if (!user) return { success: false, error: 'Senha atual incorreta.' };
     user.recoveryQuestion = q.slice(0, 200);
     user.recoveryKeyHash = await sha256(user.salt + a);
     this.saveUsers();
+    await this.syncLocalUsersToServer();
     await this.upsertUserToSupabase(user);
     return { success: true };
   }
 
   async deleteAccount(currentPassword: string): Promise<Result> {
+    const userId = this.currentSession?.user.id;
+    if (!userId) return { success: false, error: 'Sessão inválida.' };
+
+    try {
+      await this.syncLocalUsersToServer();
+      const res = await fetch('/api/auth/delete-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, currentPassword }),
+      });
+      const json = await res.json();
+      if (res.ok && json?.success) {
+        this.users = this.users.filter((u) => u.id !== userId);
+        this.saveUsers();
+        const client = supabaseService.getClient();
+        if (client && !supabaseService.isSchemaKnownMissing()) {
+          client
+            .from('app_users')
+            .delete()
+            .eq('id', userId)
+            .then(() => {}, () => {});
+        }
+        this.signOut();
+        return { success: true };
+      }
+      if (json?.error) return { success: false, error: String(json.error) };
+    } catch {
+      /* fallback below */
+    }
+
     const user = await this.verifyCurrent(currentPassword);
     if (!user) return { success: false, error: 'Senha atual incorreta.' };
     this.users = this.users.filter((u) => u.id !== user.id);
@@ -289,7 +515,11 @@ class AuthenticationService {
   signOut() {
     this.currentSession = null;
     if (isBrowser()) {
-      localStorage.removeItem(STORAGE_SESSION_KEY);
+      try {
+        localStorage.removeItem(STORAGE_SESSION_KEY);
+      } catch {
+        /* ignore */
+      }
       window.dispatchEvent(new CustomEvent('bmcast_auth_changed'));
     }
   }
